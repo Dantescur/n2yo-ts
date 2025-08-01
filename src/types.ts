@@ -1,99 +1,99 @@
 // Common response structure
 export interface ApiResponseInfo {
-  satid?: number;
-  satname?: string;
-  transactionscount: number;
-  category?: string;
-  satcount?: number;
-  passescount?: number;
+  satid?: number
+  satname?: string
+  transactionscount: number
+  category?: string
+  satcount?: number
+  passescount?: number
 }
 
 // TLE Response
 export interface TleResponse {
   info: ApiResponseInfo & {
-    satid: number;
-    satname: string;
-  };
-  tle: string;
+    satid: number
+    satname: string
+  }
+  tle: string
 }
 
 // Position data
 export interface SatellitePosition {
-  satlatitude: number;
-  satlongitude: number;
-  sataltitude: number;
-  azimuth: number;
-  elevation: number;
-  ra: number;
-  dec: number;
-  timestamp: number;
+  satlatitude: number
+  satlongitude: number
+  sataltitude: number
+  azimuth: number
+  elevation: number
+  ra: number
+  dec: number
+  timestamp: number
 }
 
 // Positions Response
 export interface PositionsResponse {
   info: ApiResponseInfo & {
-    satid: number;
-    satname: string;
-  };
-  positions: SatellitePosition[];
+    satid: number
+    satname: string
+  }
+  positions: SatellitePosition[]
 }
 
 // Pass data (common for visual and radio passes)
 export interface SatellitePass {
-  startAz: number;
-  startAzCompass: string;
-  startEl?: number; // Only for visual passes
-  startUTC: number;
-  maxAz: number;
-  maxAzCompass: string;
-  maxEl: number;
-  maxUTC: number;
-  endAz: number;
-  endAzCompass: string;
-  endEl?: number; // Only for visual passes
-  endUTC: number;
-  mag?: number; // Only for visual passes
-  duration?: number; // Only for visual passes
+  startAz: number
+  startAzCompass: string
+  startEl?: number // Only for visual passes
+  startUTC: number
+  maxAz: number
+  maxAzCompass: string
+  maxEl: number
+  maxUTC: number
+  endAz: number
+  endAzCompass: string
+  endEl?: number // Only for visual passes
+  endUTC: number
+  mag?: number // Only for visual passes
+  duration?: number // Only for visual passes
 }
 
 // Visual Passes Response
 export interface VisualPassesResponse {
   info: ApiResponseInfo & {
-    satid: number;
-    satname: string;
-    passescount: number;
-  };
-  passes: SatellitePass[];
+    satid: number
+    satname: string
+    passescount: number
+  }
+  passes: SatellitePass[]
 }
 
 // Radio Passes Response
 export interface RadioPassesResponse {
   info: ApiResponseInfo & {
-    satid: number;
-    satname: string;
-    passescount: number;
-  };
-  passes: Omit<SatellitePass, 'startEl' | 'endEl' | 'mag' | 'duration'>[];
+    satid: number
+    satname: string
+    passescount: number
+  }
+  passes: Omit<SatellitePass, 'startEl' | 'endEl' | 'mag' | 'duration'>[]
 }
 
 // Satellite Above data
 export interface SatelliteAbove {
-  satid: number;
-  satname: string;
-  intDesignator: string;
-  launchDate: string;
-  satlat: number;
-  satlng: number;
-  satalt: number;
+  satid: number
+  satname: string
+  intDesignator: string
+  launchDate: string
+  satlat: number
+  satlng: number
+  satalt: number
 }
 
 // Above Response
 export interface AboveResponse {
   info: ApiResponseInfo & {
-    category: string;
-    satcount: number;
-  };
-  above: SatelliteAbove[];
+    category: string
+    satcount: number
+  }
+  above: SatelliteAbove[]
 }
 
 // Satellite categories
@@ -154,7 +154,8 @@ export const SatelliteCategories = {
   54: 'Chinese Space Station',
   55: 'Qianfan',
   56: 'Kuiper',
-} as const;
+} as const
 
-export type SatelliteCategoryId = keyof typeof SatelliteCategories;
-export type SatelliteCategoryName = typeof SatelliteCategories[SatelliteCategoryId];
+export type SatelliteCategoryId = keyof typeof SatelliteCategories
+export type SatelliteCategoryName =
+  (typeof SatelliteCategories)[SatelliteCategoryId]
