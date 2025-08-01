@@ -1,0 +1,57 @@
+{
+  "name": "n2yo-ts",
+  "version": "0.0.1",
+  "packageManager": "pnpm@10.13.1",
+  "description": "A strongly-typed TypeScript client for the N2YO.com satellite tracking API.",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/Dantescur/n2yo-ts#readme",
+  "bugs": {
+    "url": "https://github.com/Dantescur/n2yo-ts/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dantescur/n2yo-ts.git"
+  },
+  "author": "Daniel <cesardaniel.9611@gmail.com>",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "lint": "eslint --cache .",
+    "lint:fix": "pnpm run lint --fix",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --cache --write .",
+    "release": "bumpp && pnpm publish",
+    "prepublishOnly": "pnpm run build"
+  },
+  "devDependencies": {
+    "@sxzz/eslint-config": "^7.0.6",
+    "@sxzz/prettier-config": "^2.2.3",
+    "@types/node": "^24.1.0",
+    "bumpp": "^10.2.0",
+    "eslint": "^9.32.0",
+    "prettier": "^3.6.2",
+    "tsdown": "^0.13.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "prettier": "@sxzz/prettier-config"
+}
