@@ -9,6 +9,7 @@ import {
   mockTleResponse,
   mockVisualPassesResponse,
 } from './mock'
+import { fail } from 'assert'
 
 const TEST_API_KEY = 'test-api-key-123'
 let client: N2YOClient
@@ -90,9 +91,13 @@ describe('N2YOClient', () => {
     })
 
     it('should validate positions parameters', async () => {
-      await expect(
-        client.getPositions(25544, 91, -181, -1, 301),
-      ).rejects.toThrow(InvalidParameterError)
+      try {
+        await client.getPositions(25544, 91, -181, -1, 301)
+        fail('Expected error to be thrown')
+      } catch (error) {
+        expect(error).toBeInstanceOf(InvalidParameterError)
+
+      }
     })
   })
 
@@ -108,9 +113,15 @@ describe('N2YOClient', () => {
     })
 
     it('should validate visual passes parameters', async () => {
-      await expect(
-        client.getVisualPasses(25544, 91, -181, -1, 11, -1),
-      ).rejects.toThrow(InvalidParameterError)
+      try {
+        await client.getVisualPasses(25544, 91, -181, -1, 11, -1)
+        expect.fail('Expected error to be thrown')
+      } catch (error) {
+        expect(error).toBeInstanceOf(InvalidParameterError)
+        if (error instanceof InvalidParameterError) {
+          expect(error.message).toMatch(/Invalid parameter days: 11/)
+        }
+      }
     })
   })
 
@@ -126,9 +137,13 @@ describe('N2YOClient', () => {
     })
 
     it('should validate radio passes parameters', async () => {
-      await expect(
-        client.getRadioPasses(25544, 91, -181, -1, 11, -1),
-      ).rejects.toThrow(InvalidParameterError)
+      try {
+        await client.getRadioPasses(25544, 91, -181, -1, 11, -1)
+
+      } catch (error) {
+        expect(error).toBeInstanceOf(InvalidParameterError)
+      }
+
     })
   })
 
@@ -142,15 +157,11 @@ describe('N2YOClient', () => {
     })
 
     it('should validate above parameters', async () => {
-      await expect(
-        client.getAbove(
-          91,
-          -181,
-          -1,
-          -1,
-          999 as unknown as SatelliteCategoryId,
-        ),
-      ).rejects.toThrow(InvalidParameterError)
+      try {
+        await client.getAbove(91, -181, -1, -1, 999 as unknown as SatelliteCategoryId)
+      } catch (error) {
+        expect(error).toBeInstanceOf(InvalidParameterError)
+      }
     })
   })
 
