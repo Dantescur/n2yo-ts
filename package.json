@@ -1,6 +1,7 @@
 {
   "name": "n2yo-ts",
   "version": "0.0.1",
+  "private": false,
   "packageManager": "pnpm@10.13.1",
   "description": "A strongly-typed TypeScript client for the N2YO.com satellite tracking API.",
   "type": "module",
@@ -15,7 +16,8 @@
   },
   "author": "Daniel <cesardaniel.9611@gmail.com>",
   "files": [
-    "dist"
+    "README.md",
+    "dist/**/*"
   ],
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -48,6 +50,7 @@
     "bumpp": "^10.2.0",
     "eslint": "^9.32.0",
     "prettier": "^3.6.2",
+    "publint": "^0.3.12",
     "tsdown": "^0.13.0",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",

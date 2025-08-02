@@ -4,8 +4,13 @@ import { defineConfig } from 'tsdown'
 export default defineConfig({
   entry: ['./src/index.ts'],
   platform: 'neutral',
-  attw: true,
-  format: ['es'],
+  target: 'es2022',
+  pub: true,
+  outDir: './dist',
+  dts: true,
   exports: true,
+  shims: true,
+  format: ['esm'],
+  report: true,
 })
 /* v8 ignore stop */
