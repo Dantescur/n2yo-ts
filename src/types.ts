@@ -1,102 +1,182 @@
-// Common response structure
+/**
+ * Core interface representing common response metadata
+ * returned by all N2YO API endpoints.
+ */
 export interface ApiResponseInfo {
+  /** Satellite NORAD ID (when applicable) */
   satid?: number
+  /** Satellite name (when applicable) */
   satname?: string
+  /** Number of API transactions used */
   transactionscount: number
+  /** Category name (for 'above' endpoint) */
   category?: string
+  /** Number of satellites returned (for 'above' endpoint) */
   satcount?: number
+  /** Number of passes returned (for passes endpoints) */
   passescount?: number
 }
 
-// TLE Response
+/**
+ * Interface representing a Two-Line Element (TLE) response.
+ */
 export interface TleResponse {
   info: ApiResponseInfo & {
+    /** Satellite NORAD ID */
     satid: number
+    /** Satellite name */
     satname: string
   }
+  /** The complete TLE string (tow lines separated by CRLF) */
   tle: string
 }
 
-// Position data
+/**
+ * Represents a single satellite position at a specific time.
+ */
 export interface SatellitePosition {
+  /** Satellite latitude in degrees */
   satlatitude: number
+  /** Satellite longitude in degrees */
   satlongitude: number
+  /** Satellite altitude in kilometers */
   sataltitude: number
+  /** Azimuth in degrees */
   azimuth: number
+  /** Elevation in degrees */
   elevation: number
+  /** Right ascension */
   ra: number
+  /** Declination */
   dec: number
+  /** UNIX timestamp of the position */
   timestamp: number
 }
 
-// Positions Response
+/**
+ * Interface representing a satellite positions response.
+ */
 export interface PositionsResponse {
   info: ApiResponseInfo & {
+    /** Satellite NORAD ID */
     satid: number
+    /** Satellite name */
     satname: string
   }
+  /** Array of satellite positions */
   positions: SatellitePosition[]
 }
 
-// Pass data (common for visual and radio passes)
+/**
+ * Data describing a single satellite pass (common schema for visual and radio passes).
+ */
 export interface SatellitePass {
+  /** Azimuth at the start of the pass, in degrees (0–360) */
   startAz: number
+  /** Cardinal compass direction at the start of the pass (e.g., “N”, “SW”) */
   startAzCompass: string
-  startEl?: number // Only for visual passes
+  /** Elevation at the start of the pass, in degrees (only returned for visual passes) */
+  startEl?: number
+  /** Unix timestamp (UTC) marking the start of the pass */
   startUTC: number
+  /** Azimuth at the maximum elevation, in degrees (0–360) */
   maxAz: number
+  /** Cardinal compass direction at the maximum elevation */
   maxAzCompass: string
+  /** Maximum elevation reached during the pass, in degrees */
   maxEl: number
+  /** Unix timestamp (UTC) marking the maximum elevation */
   maxUTC: number
+  /** Azimuth at the end of the pass, in degrees (0–360) */
   endAz: number
+  /** Cardinal compass direction at the end of the pass */
   endAzCompass: string
-  endEl?: number // Only for visual passes
+  /** Elevation at the end of the pass, in degrees (only returned for visual passes) */
+  endEl?: number
+  /** Unix timestamp (UTC) marking the end of the pass */
   endUTC: number
-  mag?: number // Only for visual passes
-  duration?: number // Only for visual passes
+  /** Visual magnitude (brightness) of the satellite at max elevation (only returned for visual passes) */
+  mag?: number
+  /** Total pass duration in seconds (only returned for visual passes) */
+  duration?: number
 }
 
-// Visual Passes Response
+/**
+ * Response returned by the `/visualpasses` endpoint.
+ * Contains all upcoming visual (sunlit) passes for the requested satellite and location.
+ */
 export interface VisualPassesResponse {
   info: ApiResponseInfo & {
+    /** Satellite NORAD ID */
     satid: number
+    /** Satellite name */
     satname: string
+    /** Number of passes returned */
     passescount: number
   }
+  /** Array of visual passes */
   passes: SatellitePass[]
 }
 
-// Radio Passes Response
+/**
+ * Response returned by the `/radiopasses` endpoint.
+ * Contains all upcoming radio (non-visual) passes for the requested satellite and location.
+ */
 export interface RadioPassesResponse {
   info: ApiResponseInfo & {
+    /** Satellite NORAD ID */
     satid: number
+    /** Satellite name */
     satname: string
+    /** Number of passes returned */
     passescount: number
   }
+  /** Array of radio passes (excludes visual-only fields) */
   passes: Omit<SatellitePass, 'startEl' | 'endEl' | 'mag' | 'duration'>[]
 }
 
-// Satellite Above data
+/**
+ * Single satellite record returned by the `/above` endpoint.
+ */
 export interface SatelliteAbove {
+  /** Satellite NORAD ID */
   satid: number
+  /** Satellite name */
   satname: string
+  /** International designator (COSPAR ID) */
   intDesignator: string
+  /** Launch date in YYYY-MM-DD format */
   launchDate: string
+  /** Sub-satellite latitude at query epoch, in degrees */
   satlat: number
+  /** Sub-satellite longitude at query epoch, in degrees */
   satlng: number
+  /** Altitude above sea level, in kilometers */
   satalt: number
 }
 
-// Above Response
+/**
+ * Response returned by the `/above` endpoint.
+ * Lists all visible satellites above a specified observer location and minimum elevation.
+ */
 export interface AboveResponse {
   info: ApiResponseInfo & {
+    /** Category name (matches the query) */
     category: string
+    /** Number of satellites returned */
     satcount: number
   }
+  /** Array of satellites currently above the horizon */
   above: SatelliteAbove[]
 }
 
-// Satellite categories
+/**
+ * Comprehensive list of satellite categories supported by N2YO.
+ *
+ * @remarks
+ * The numeric keys correspond to category IDs used in API requests.
+ * The string values are human-readable category names.
+ */
 export const SatelliteCategories = {
   1: 'Brightest',
   2: 'ISS',
@@ -156,6 +236,13 @@ export const SatelliteCategories = {
   56: 'Kuiper',
 } as const
 
+/**
+ * Type representing valid satellite category IDs (1-56).
+ */
 export type SatelliteCategoryId = keyof typeof SatelliteCategories
+
+/**
+ * Type representing valid satellite category names.
+ */
 export type SatelliteCategoryName =
   (typeof SatelliteCategories)[SatelliteCategoryId]
