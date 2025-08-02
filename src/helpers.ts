@@ -81,8 +81,8 @@ export function getAllCategories(): Array<{
  * @see https://www.movable-type.co.uk/scripts/latlong.html
  */
 export function calculateDistance(
-  point1: Coordinate,
-  point2: Coordinate,
+  point1: { lat: number; lng: number },
+  point2: { lat: number; lng: number },
 ): number {
   const R = 6371 // Earth's radius in kilometers
   const toRadians = (degrees: number) => (degrees * Math.PI) / 180
