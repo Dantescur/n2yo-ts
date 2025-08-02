@@ -12,7 +12,7 @@ export {
   type VisualPassesResponse,
 } from './types'
 
-export { getAllCategories, splitTle, timestampToDate } from './helpers'
+export { getAllCategories, splitTle, timestampToDate, calculateDistance } from './helpers'
 
 /**
  * Factory function for creating N2YOClient instances.
