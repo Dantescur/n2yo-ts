@@ -106,17 +106,19 @@ const result = await client.getAbove(
 ### Utility Methods
 
 ```typescript
+import { splitTle, timestampToDate, getAllCategories } from 'n2yo-ts'
+
 // Split TLE into two lines
-const [line1, line2] = N2YOClient.splitTle(tleData.tle)
+const [line1, line2] = splitTle(tleData.tle)
 
 // Convert UNIX timestamp to Date
-const date = N2YOClient.timestampToDate(pass.startUTC)
+const date = timestampToDate(pass.startUTC)
 
 // Get category name by ID
 const categoryName = client.getCategoryName(18) // "Amateur radio"
 
 // Get all categories
-const allCategories = N2YOClient.getAllCategories()
+const allCategories = getAllCategories()
 ```
 
 ## Error Handling
@@ -154,4 +156,4 @@ Contributions are welcome! Please open an issue or pull request on GitHub.
 
 ## License
 
-[MIT](./LICENSE) License © 2025 [Kevin Deng](https://github.com/sxzz)
+[MIT](./LICENSE) License © 2025 [Daniel](https://github.com/Dantescur)
