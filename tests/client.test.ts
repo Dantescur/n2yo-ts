@@ -1,3 +1,4 @@
+import { fail } from 'node:assert'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { N2YOClient } from '../src/client'
 import { InvalidParameterError, RateLimitError } from '../src/errors'
@@ -9,7 +10,6 @@ import {
   mockTleResponse,
   mockVisualPassesResponse,
 } from './mock'
-import { fail } from 'assert'
 
 const TEST_API_KEY = 'test-api-key-123'
 let client: N2YOClient
@@ -96,7 +96,6 @@ describe('N2YOClient', () => {
         fail('Expected error to be thrown')
       } catch (error) {
         expect(error).toBeInstanceOf(InvalidParameterError)
-
       }
     })
   })
@@ -139,11 +138,9 @@ describe('N2YOClient', () => {
     it('should validate radio passes parameters', async () => {
       try {
         await client.getRadioPasses(25544, 91, -181, -1, 11, -1)
-
       } catch (error) {
         expect(error).toBeInstanceOf(InvalidParameterError)
       }
-
     })
   })
 
@@ -158,7 +155,13 @@ describe('N2YOClient', () => {
 
     it('should validate above parameters', async () => {
       try {
-        await client.getAbove(91, -181, -1, -1, 999 as unknown as SatelliteCategoryId)
+        await client.getAbove(
+          91,
+          -181,
+          -1,
+          -1,
+          999 as unknown as SatelliteCategoryId,
+        )
       } catch (error) {
         expect(error).toBeInstanceOf(InvalidParameterError)
       }
