@@ -10,10 +10,41 @@ import {
   type VisualPassesResponse,
 } from './types'
 
+/**
+ * N2YO API client for Node, Deno, Bun and browsers.
+ *
+ * @remarks
+ * This class wraps the public [N2YO REST API](https://www.n2yo.com/api/)
+ * and provides strongly-typed helpers for every endpoint.
+ *
+ * All methods return native `Promises` and automatically inject your API key,
+ * handle rate-limiting (`429`) and other HTTP errors by throwing
+ * {@link N2YOError}, {@link RateLimitError} or {@link InvalidParameterError}
+ *
+ * @example
+ * ```ts
+ * import { N2YOClient } from 'n2yo-ts';
+ *
+ * const n2yo = new N2YOClient('YOUR_API_KEY');
+ *
+ * const iss = await n2yo.getTle(25544);
+ * console.log(iss.tle);
+ * ```
+ */
 export class N2YOClient {
+  /** Base URL for all requests. */
   private readonly baseUrl: string = 'https://api.n2yo.com/rest/v1/satellite'
+  /** Private API key supplied at construction. */
   private readonly apiKey: string
 
+  /**
+   * Create a new client instance.
+   *
+   * @param apiKey – your private N2YO API key. Must be non-empty.
+   *
+   * @throws {InvalidParameterError} If the key is missing or empty.
+   *
+   */
   constructor(apiKey: string) {
     if (!apiKey) {
       throw new InvalidParameterError('apiKey', apiKey, 'API key is required')
@@ -21,6 +52,15 @@ export class N2YOClient {
     this.apiKey = apiKey
   }
 
+  /**
+   * Generic helper that performs the actual HTTP request.
+   *
+   * @param endpoint – the path **including** query parameters (after `?`).
+   * @returns Parsed JSON payload.
+   *
+   * @throws {RateLimitError} on HTTP 429.
+   * @throws {N2YOError} for any other non-2xx response.
+   */
   private async makeRequest<T>(endpoint: string): Promise<T> {
     const url = `${this.baseUrl}/${endpoint}&apiKey=${this.apiKey}`
     const response = await fetch(url)
@@ -36,22 +76,26 @@ export class N2YOClient {
   }
 
   /**
-   * Retrieve the Two Line Elements (TLE) for a satellite identified by NORAD id
-   * @param id NORAD id of the satellite
-   * @returns Promise with TLE data
+   * Retrieve the latest Two-Line Element set (TLE) for a satellite.
+   *
+   * @param id – NORAD catalog number (e.g. `25544` for the ISS).
+   * @returns Promise resolving to {@link TleResponse}.
    */
   getTle(id: number): Promise<TleResponse> {
     return this.makeRequest<TleResponse>(`tle/${id}`)
   }
 
   /**
-   * Retrieve the future positions of any satellite as groundtrack
-   * @param id NORAD id of the satellite
-   * @param observerLat Observer's latitude in decimal degrees
-   * @param observerLng Observer's longitude in decimal degrees
-   * @param observerAlt Observer's altitude above sea level in meters
-   * @param seconds Number of future positions to return (max 300)
-   * @returns Promise with satellite positions data
+   * Predict future positions (“ground track”) for a satellite.
+   *
+   * @param id – NORAD catalog number.
+   * @param observerLat – observer latitude in decimal degrees (-90 … 90).
+   * @param observerLng – observer longitude in decimal degrees (-180 … 180).
+   * @param observerAlt – observer altitude **above sea level** in **meters**.
+   * @param seconds – how many seconds of prediction to return (max `300`).
+   * @returns Promise resolving to {@link PositionsResponse}.
+   *
+   * @throws {@link InvalidParameterError} if `seconds > 300`.
    */
   getPositions(
     id: number,
@@ -74,14 +118,17 @@ export class N2YOClient {
   }
 
   /**
-   * Get predicted visual passes for any satellite relative to a location on Earth
-   * @param id NORAD id of the satellite
-   * @param observerLat Observer's latitude in decimal degrees
-   * @param observerLng Observer's longitude in decimal degrees
-   * @param observerAlt Observer's altitude above sea level in meters
-   * @param days Number of days of prediction (max 10)
-   * @param minVisibility Minimum number of seconds the satellite should be visible
-   * @returns Promise with visual passes data
+   * Predict **visual** passes (sunlit, naked-eye visible) for a satellite.
+   *
+   * @param id – NORAD catalog number.
+   * @param observerLat – observer latitude in decimal degrees.
+   * @param observerLng – observer longitude in decimal degrees.
+   * @param observerAlt – observer altitude **above sea level** in **meters**.
+   * @param days – prediction window in days (max `10`).
+   * @param minVisibility – minimum pass duration in seconds to be included.
+   * @returns Promise resolving to {@link VisualPassesResponse}.
+   *
+   * @throws {@link InvalidParameterError} if `days > 10`.
    */
   getVisualPasses(
     id: number,
@@ -105,14 +152,17 @@ export class N2YOClient {
   }
 
   /**
-   * Get predicted radio passes for any satellite relative to a location on Earth
-   * @param id NORAD id of the satellite
-   * @param observerLat Observer's latitude in decimal degrees
-   * @param observerLng Observer's longitude in decimal degrees
-   * @param observerAlt Observer's altitude above sea level in meters
-   * @param days Number of days of prediction (max 10)
-   * @param minElevation Minimum elevation acceptable for the highest altitude point
-   * @returns Promise with radio passes data
+   * Predict **radio** passes for a satellite (no sunlight requirement).
+   *
+   * @param id – NORAD catalog number.
+   * @param observerLat – observer latitude in decimal degrees.
+   * @param observerLng – observer longitude in decimal degrees.
+   * @param observerAlt – observer altitude **above sea level** in **meters**.
+   * @param days – prediction window in days (max `10`).
+   * @param minElevation – minimum **maximum** elevation in degrees to be included.
+   * @returns Promise resolving to {@link RadioPassesResponse}.
+   *
+   * @throws {@link InvalidParameterError} if `days > 10`.
    */
   getRadioPasses(
     id: number,
@@ -136,13 +186,16 @@ export class N2YOClient {
   }
 
   /**
-   * Get all objects within a given search radius above observer's location
-   * @param observerLat Observer's latitude in decimal degrees
-   * @param observerLng Observer's longitude in decimal degrees
-   * @param observerAlt Observer's altitude above sea level in meters
-   * @param searchRadius Search radius in degrees (0-90)
-   * @param categoryId Category id (0 for all categories)
-   * @returns Promise with satellites above data
+   * List all catalogued objects above a given location.
+   *
+   * @param observerLat – observer latitude in decimal degrees.
+   * @param observerLng – observer longitude in decimal degrees.
+   * @param observerAlt – observer altitude **above sea level** in **meters**.
+   * @param searchRadius – radius around the observer to search (0–90 °).
+   * @param categoryId – satellite category to filter by (use `0` for all categories).
+   * @returns Promise resolving to {@link AboveResponse}.
+   *
+   * @throws {@link InvalidParameterError} if `searchRadius` is outside 0–90 °.
    */
   getAbove(
     observerLat: number,
@@ -165,9 +218,10 @@ export class N2YOClient {
   }
 
   /**
-   * Get the name of a satellite category by its ID
-   * @param categoryId The category ID
-   * @returns The category name or undefined if not found
+   * Reverse-lookup a satellite category name from its numeric ID.
+   *
+   * @param categoryId – numeric category identifier (1–56).
+   * @returns Human-readable category name or `undefined` if the ID is unknown.
    */
   getCategoryName(
     categoryId: SatelliteCategoryId,
