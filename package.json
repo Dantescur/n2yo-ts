@@ -6,6 +6,9 @@
   "description": "A strongly-typed TypeScript client for the N2YO.com satellite tracking API.",
   "type": "module",
   "license": "MIT",
+  "bin": {
+    "n2yo-ts": "./dist/cli.js"
+  },
   "homepage": "https://github.com/Dantescur/n2yo-ts#readme",
   "bugs": {
     "url": "https://github.com/Dantescur/n2yo-ts/issues"
@@ -59,5 +62,8 @@
   "engines": {
     "node": ">=20.19.0"
   },
-  "prettier": "@sxzz/prettier-config"
+  "prettier": "@sxzz/prettier-config",
+  "dependencies": {
+    "commander": "^14.0.0"
+  }
 }
