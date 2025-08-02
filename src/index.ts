@@ -1,5 +1,5 @@
 import { N2YOClient } from './client'
-export { InvalidParameterError, N2YOError, RateLimitError } from '@/errors'
+export { InvalidParameterError, N2YOError, RateLimitError } from './errors'
 export {
   SatelliteCategories,
   type AboveResponse,
@@ -9,9 +9,9 @@ export {
   type SatelliteCategoryName,
   type TleResponse,
   type VisualPassesResponse,
-} from '@/types'
+} from './types'
 
-export { getAllCategories, splitTle, timestampToDate } from '@/helpers'
+export { getAllCategories, splitTle, timestampToDate } from './helpers'
 
 // Factory function with explicit return type
 export const createN2YOClient = (apiKey: string): N2YOClient =>

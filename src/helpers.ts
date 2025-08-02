@@ -2,7 +2,7 @@ import {
   SatelliteCategories,
   type SatelliteCategoryId,
   type SatelliteCategoryName,
-} from '@/types'
+} from './types'
 
 /**
  * Split the TLE string into its two lines

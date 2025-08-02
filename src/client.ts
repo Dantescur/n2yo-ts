@@ -1,4 +1,4 @@
-import { InvalidParameterError, N2YOError, RateLimitError } from '@/errors'
+import { InvalidParameterError, N2YOError, RateLimitError } from './errors'
 import {
   SatelliteCategories,
   type AboveResponse,
@@ -8,7 +8,7 @@ import {
   type SatelliteCategoryName,
   type TleResponse,
   type VisualPassesResponse,
-} from '@/types'
+} from './types'
 
 export class N2YOClient {
   private readonly baseUrl: string = 'https://api.n2yo.com/rest/v1/satellite'

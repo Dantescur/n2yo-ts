@@ -1,8 +1,13 @@
 import { fail } from 'node:assert'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  getAllCategories,
+  splitTle,
+  timestampToDate,
+  type SatelliteCategoryId,
+} from '../src'
 import { N2YOClient } from '../src/client'
 import { InvalidParameterError, RateLimitError } from '../src/errors'
-import type { SatelliteCategoryId } from '../src'
 import {
   mockAboveResponse,
   mockPositionsResponse,
@@ -185,22 +190,20 @@ describe('N2YOClient', () => {
     describe('TLE Processing', () => {
       it('should split TLE into two lines', () => {
         const tle = 'LINE1\r\nLINE2'
-        const result = N2YOClient.splitTle(tle)
+        const result = splitTle(tle)
         expect(result).toEqual(['LINE1', 'LINE2'])
       })
 
       it('should throw for empty TLE', () => {
-        expect(() => N2YOClient.splitTle('')).toThrow('Invalid TLE format')
+        expect(() => splitTle('')).toThrow('Invalid TLE format')
       })
 
       it('should throw for malformed TLE (single line)', () => {
-        expect(() => N2YOClient.splitTle('SINGLE_LINE')).toThrow(
-          'Invalid TLE format',
-        )
+        expect(() => splitTle('SINGLE_LINE')).toThrow('Invalid TLE format')
       })
 
       it('should throw for malformed TLE (too many lines)', () => {
-        expect(() => N2YOClient.splitTle('LINE1\r\nLINE2\r\nLINE3')).toThrow(
+        expect(() => splitTle('LINE1\r\nLINE2\r\nLINE3')).toThrow(
           'Invalid TLE format',
         )
       })
@@ -209,24 +212,24 @@ describe('N2YOClient', () => {
     describe('Time Conversion', () => {
       it('should convert timestamp to Date', () => {
         const timestamp = 1672531200 // 2023-01-01 00:00:00 UTC
-        const result = N2YOClient.timestampToDate(timestamp)
+        const result = timestampToDate(timestamp)
         expect(result).toEqual(new Date('2023-01-01T00:00:00Z'))
       })
 
       it('should throw for NaN timestamp', () => {
-        expect(() => N2YOClient.timestampToDate(Number.NaN)).toThrow(
+        expect(() => timestampToDate(Number.NaN)).toThrow(
           'Invalid timestamp value',
         )
       })
 
       it('should throw for infinite timestamp', () => {
-        expect(() => N2YOClient.timestampToDate(Infinity)).toThrow(
+        expect(() => timestampToDate(Infinity)).toThrow(
           'Invalid timestamp value',
         )
       })
 
       it('should throw for negative infinity timestamp', () => {
-        expect(() => N2YOClient.timestampToDate(-Infinity)).toThrow(
+        expect(() => timestampToDate(-Infinity)).toThrow(
           'Invalid timestamp value',
         )
       })
@@ -241,7 +244,7 @@ describe('N2YOClient', () => {
       })
 
       it('should get all categories', () => {
-        const categories = N2YOClient.getAllCategories()
+        const categories = getAllCategories()
         expect(categories.length).toBeGreaterThan(0)
         expect(categories[0]).toHaveProperty('id')
         expect(categories[0]).toHaveProperty('name')

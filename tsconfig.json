@@ -10,9 +10,6 @@
     "module": "Preserve",
     // Bundler mode
     "moduleResolution": "bundler",
-    "paths": {
-      "@/*": ["./src/*"]
-    },
     "allowImportingTsExtensions": true,
     "allowJs": true,
 
