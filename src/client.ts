@@ -1,4 +1,4 @@
-import { InvalidParameterError, N2YOError, RateLimitError } from './errors'
+import { InvalidParameterError, N2YOError, RateLimitError } from '@/errors'
 import {
   SatelliteCategories,
   type AboveResponse,
@@ -8,7 +8,7 @@ import {
   type SatelliteCategoryName,
   type TleResponse,
   type VisualPassesResponse,
-} from './types'
+} from '@/types'
 
 export class N2YOClient {
   private readonly baseUrl: string = 'https://api.n2yo.com/rest/v1/satellite'
@@ -173,51 +173,5 @@ export class N2YOClient {
     categoryId: SatelliteCategoryId,
   ): SatelliteCategoryName | undefined {
     return SatelliteCategories[categoryId]
-  }
-
-  /**
-   * Split the TLE string into its two lines
-   * @param tle The single-line TLE string
-   * @returns Array with the two TLE lines
-   */
-  // Add these changes to your existing client.ts file
-
-  static splitTle(tle: string): [string, string] {
-    if (!tle.includes('\r\n')) {
-      throw new Error(
-        String.raw`Invalid TLE format - must contain two lines separated by \r\n`,
-      )
-    }
-    const lines = tle.split('\r\n')
-    if (lines.length !== 2) {
-      throw new Error('Invalid TLE format - must contain exactly two lines')
-    }
-    return lines as [string, string]
-  }
-
-  /**
-   * Convert Unix timestamp to Date object
-   * @param timestamp Unix timestamp in seconds
-   * @returns Date object
-   */
-  static timestampToDate(timestamp: number): Date {
-    if (Number.isNaN(timestamp) || !Number.isFinite(timestamp)) {
-      throw new TypeError('Invalid timestamp value')
-    }
-    return new Date(timestamp * 1000)
-  }
-
-  /**
-   * Get all satellite categories as an array of {id, name} objects
-   * @returns Array of all satellite categories
-   */
-  static getAllCategories(): Array<{
-    id: SatelliteCategoryId
-    name: SatelliteCategoryName
-  }> {
-    return Object.entries(SatelliteCategories).map(([id, name]) => ({
-      id: Number.parseInt(id) as SatelliteCategoryId,
-      name,
-    }))
   }
 }
