@@ -249,4 +249,49 @@ export class N2YOClient {
   ): SatelliteCategoryName | undefined {
     return SatelliteCategories[categoryId]
   }
+
+  /**
+   * Convert a UTC Unix timestamp (seconds) to a local time string in the specified time zone.
+   *
+   * @param utcTimestamp – Unix timestamp in seconds (UTC).
+   * @param timeZone – IANA time zone name (e.g., 'America/New_York').
+   * @returns Formatted local time string (e.g., '2025-08-01 19:17:00').
+   * @throws {InvalidParameterError} If the time zone is invalid or timestamp is not a number.
+   *
+   * @example
+   * const localTime = client.utcToLocal(1711987840, 'America/New_York');
+   * // Returns '2024-04-01 15:30:40' (depending on DST)
+   */
+  utcToLocal(utcTimestamp: number, timeZone: string): string {
+    if (Number.isNaN(utcTimestamp) || !Number.isFinite(utcTimestamp)) {
+      throw new InvalidParameterError(
+        'utcTimestamp',
+        utcTimestamp,
+        'Invalid timestamp value',
+      )
+    }
+
+    try {
+      const date = new Date(utcTimestamp * 1000)
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      })
+      const parts = formatter.formatToParts(date)
+      const year = parts.find((p) => p.type === 'year')!.value
+      const month = parts.find((p) => p.type === 'month')!.value
+      const day = parts.find((p) => p.type === 'day')!.value
+      const hour = parts.find((p) => p.type === 'hour')!.value
+      const minute = parts.find((p) => p.type === 'minute')!.value
+      const second = parts.find((p) => p.type === 'second')!.value
+      return `${year}-${month}-${day} ${hour}:${minute}:${second}`
+    } catch {
+      throw new InvalidParameterError('timeZone', timeZone, 'Invalid time zone')
+    }
+  }
 }
