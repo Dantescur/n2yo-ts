@@ -253,3 +253,17 @@ export interface Coordinate {
   /** Longitude in decimal degrees */
   lng: number
 }
+
+/**
+ * Mapping of common satellite names to their NORAD IDs.
+ */
+export const COMMON_SATELLITES: Record<string, number> = {
+  ISS: 25544,
+  HUBBLE: 20580,
+  STARLINK_1: 44235,
+  NOAA_15: 25338,
+  NOAA_18: 28654,
+  NOAA_19: 33591,
+  GOES_16: 41866,
+  GOES_17: 43226,
+} as const

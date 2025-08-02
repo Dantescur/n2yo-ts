@@ -1,5 +1,6 @@
 import { InvalidParameterError, N2YOError, RateLimitError } from './errors'
 import {
+  COMMON_SATELLITES,
   SatelliteCategories,
   type AboveResponse,
   type PositionsResponse,
@@ -21,13 +22,15 @@ import {
  * handle rate-limiting (`429`) and other HTTP errors by throwing
  * {@link N2YOError}, {@link RateLimitError} or {@link InvalidParameterError}
  *
+ * Common satellites can be queried by name using {@link getTleByName}
+ *
  * @example
  * ```ts
  * import { N2YOClient } from 'n2yo-ts';
  *
  * const n2yo = new N2YOClient('YOUR_API_KEY');
  *
- * const iss = await n2yo.getTle(25544);
+ * const iss = await n2yo.getTleByName('ISS') // Uses NORAD ID 25544
  * console.log(iss.tle);
  * ```
  */
@@ -83,6 +86,24 @@ export class N2YOClient {
    */
   getTle(id: number): Promise<TleResponse> {
     return this.makeRequest<TleResponse>(`tle/${id}`)
+  }
+
+  /**
+   * Retrieve the latest Two-Line Element set (TLE) for a satellite by its common name.
+   *
+   * @param name - Common name of the satellite (e.g., 'ISS', 'HUBBLE').
+   * @returns Promise resolving to {@link TleResponse}.
+   * @throws {InvalidParameterError} If the satellite name is not recognized.
+   *
+   * @example
+   * const tle = await client.getTleByName('ISS'); // Fetches TLE for NORAD ID 25544
+   */
+  getTleByName(name: string): Promise<TleResponse> {
+    const noradId = COMMON_SATELLITES[name.toUpperCase()]
+    if (!noradId) {
+      throw new InvalidParameterError('name', name, 'Unknow satellite name')
+    }
+    return this.getTle(noradId)
   }
 
   /**

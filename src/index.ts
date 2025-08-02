@@ -2,6 +2,7 @@
 import { N2YOClient } from './client'
 export { InvalidParameterError, N2YOError, RateLimitError } from './errors'
 export {
+  COMMON_SATELLITES,
   SatelliteCategories,
   type AboveResponse,
   type Coordinate,
