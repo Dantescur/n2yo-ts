@@ -246,3 +246,10 @@ export type SatelliteCategoryId = keyof typeof SatelliteCategories
  */
 export type SatelliteCategoryName =
   (typeof SatelliteCategories)[SatelliteCategoryId]
+
+export interface Coordinate {
+  /** Latitude in decimal degrees */
+  lat: number
+  /** Longitude in decimal degrees */
+  lng: number
+}

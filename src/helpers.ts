@@ -1,5 +1,6 @@
 import {
   SatelliteCategories,
+  type Coordinate,
   type SatelliteCategoryId,
   type SatelliteCategoryName,
 } from './types'
@@ -66,8 +67,8 @@ export function getAllCategories(): Array<{
 /**
  * Calculates the great-circle distance between two points on Earth using the Haversine formula.
  *
- * @param point1 - First point with latitude and longitude in decimal degrees.
- * @param point2 - Second point with latitude and longitude in decimal degrees.
+ * @param point1 - First geographic coordinate
+ * @param point2 - Second geographic coordinate
  * @returns Distance between the two points in kilometers.
  *
  * @example
@@ -75,10 +76,13 @@ export function getAllCategories(): Array<{
  *   { lat: 40.7128, lng: -74.0060 }, // New York City
  *   { lat: 51.5074, lng: -0.1278 }   // London
  * ); // Returns ~5570 km
+ *
+ * @see https://en.wikipedia.org/wiki/Haversine_formula
+ * @see https://www.movable-type.co.uk/scripts/latlong.html
  */
 export function calculateDistance(
-  point1: { lat: number; lng: number },
-  point2: { lat: number; lng: number },
+  point1: Coordinate,
+  point2: Coordinate,
 ): number {
   const R = 6371 // Earth's radius in kilometers
   const toRadians = (degrees: number) => (degrees * Math.PI) / 180
@@ -95,4 +99,3 @@ export function calculateDistance(
 
   return R * c
 }
-

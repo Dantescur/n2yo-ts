@@ -4,6 +4,7 @@ export { InvalidParameterError, N2YOError, RateLimitError } from './errors'
 export {
   SatelliteCategories,
   type AboveResponse,
+  type Coordinate,
   type PositionsResponse,
   type RadioPassesResponse,
   type SatelliteCategoryId,
@@ -12,7 +13,12 @@ export {
   type VisualPassesResponse,
 } from './types'
 
-export { getAllCategories, splitTle, timestampToDate, calculateDistance } from './helpers'
+export {
+  calculateDistance,
+  getAllCategories,
+  splitTle,
+  timestampToDate,
+} from './helpers'
 
 /**
  * Factory function for creating N2YOClient instances.
