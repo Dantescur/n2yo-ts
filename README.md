@@ -115,7 +115,7 @@ const starlinks = await client.getAbove(34.0522, -118.2437, 0, 500, 52)
 ### Utility Functions
 
 ```typescript
-import { getAllCategories, splitTle, timestampToDate } from 'n2yo-ts'
+import { getAllCategories, splitTle, timestampToDate, calculateDistance } from 'n2yo-ts'
 
 // Split TLE into separate lines
 const [line1, line2] = splitTle('1 25544U...\r\n2 25544...')
@@ -125,6 +125,11 @@ const passTime = timestampToDate(1719878400)
 
 // Get all satellite categories
 const categories = getAllCategories()
+
+const distance = calculateDistance(
+{ lat: 40.7128, lng: -74.0060 }, // New York  City
+{ lat: 51.5074, lng: -0.1278 } // London); 
+// Returns ~5570 km
 ```
 
 ## Error Handling ⚠️
