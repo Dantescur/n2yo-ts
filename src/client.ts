@@ -72,10 +72,24 @@ export class N2YOClient {
       if (response.status === 429) {
         throw new RateLimitError()
       }
-      throw new N2YOError(`API request failed: ${response.statusText}`)
+      const text = await response.text()
+      throw new N2YOError(
+        `API request failed: ${response.status} ${response.statusText} - ${text}`,
+      )
     }
 
-    return response.json() as Promise<T>
+    const data = await response.json()
+    if (data === null) {
+      throw new N2YOError(
+        `Invalid API response: Expected JSON object, got null`,
+      )
+    }
+    if (typeof data !== 'object') {
+      throw new N2YOError(
+        `Invalid API response: Expected JSON object, got ${typeof data}`,
+      )
+    }
+    return data as T
   }
 
   /**
@@ -118,7 +132,7 @@ export class N2YOClient {
    *
    * @throws {@link InvalidParameterError} if `seconds > 300`.
    */
-  getPositions(
+  async getPositions(
     id: number,
     observerLat: number,
     observerLng: number,
@@ -133,9 +147,13 @@ export class N2YOClient {
       )
     }
 
-    return this.makeRequest<PositionsResponse>(
+    const response = await this.makeRequest<PositionsResponse>(
       `positions/${id}/${observerLat}/${observerLng}/${observerAlt}/${seconds}`,
     )
+    if (!response.positions) {
+      return { ...response, positions: [] }
+    }
+    return response
   }
 
   /**
@@ -151,7 +169,7 @@ export class N2YOClient {
    *
    * @throws {@link InvalidParameterError} if `days > 10`.
    */
-  getVisualPasses(
+  async getVisualPasses(
     id: number,
     observerLat: number,
     observerLng: number,
@@ -167,9 +185,18 @@ export class N2YOClient {
       )
     }
 
-    return this.makeRequest<VisualPassesResponse>(
+    const response = await this.makeRequest<VisualPassesResponse>(
       `visualpasses/${id}/${observerLat}/${observerLng}/${observerAlt}/${days}/${minVisibility}`,
     )
+
+    if (!response.passes) {
+      return {
+        ...response,
+        passes: [],
+        info: { ...response.info, passescount: 0 },
+      }
+    }
+    return response
   }
 
   /**
@@ -185,7 +212,7 @@ export class N2YOClient {
    *
    * @throws {@link InvalidParameterError} if `days > 10`.
    */
-  getRadioPasses(
+  async getRadioPasses(
     id: number,
     observerLat: number,
     observerLng: number,
@@ -201,9 +228,17 @@ export class N2YOClient {
       )
     }
 
-    return this.makeRequest<RadioPassesResponse>(
+    const response = await this.makeRequest<RadioPassesResponse>(
       `radiopasses/${id}/${observerLat}/${observerLng}/${observerAlt}/${days}/${minElevation}`,
     )
+    if (!response.passes) {
+      return {
+        ...response,
+        passes: [],
+        info: { ...response.info, passescount: 0 },
+      }
+    }
+    return response
   }
 
   /**
@@ -218,7 +253,7 @@ export class N2YOClient {
    *
    * @throws {@link InvalidParameterError} if `searchRadius` is outside 0–90 °.
    */
-  getAbove(
+  async getAbove(
     observerLat: number,
     observerLng: number,
     observerAlt: number,
@@ -233,9 +268,34 @@ export class N2YOClient {
       )
     }
 
-    return this.makeRequest<AboveResponse>(
-      `above/${observerLat}/${observerLng}/${observerAlt}/${searchRadius}/${categoryId}`,
-    )
+    try {
+      const response = await this.makeRequest<AboveResponse>(
+        `above/${observerLat}/${observerLng}/${observerAlt}/${searchRadius}/${categoryId}`,
+      )
+      if (!response.info || !response.above) {
+        return {
+          info: {
+            category: this.getCategoryName(categoryId) || 'Unknown',
+            transactionscount: response.info?.transactionscount || 0,
+            satcount: 0,
+          },
+          above: [],
+        }
+      }
+      return response
+    } catch (error) {
+      if (error instanceof N2YOError && error.message.includes('got null')) {
+        return {
+          info: {
+            category: this.getCategoryName(categoryId) || 'Unknown',
+            transactionscount: 0,
+            satcount: 0,
+          },
+          above: [],
+        }
+      }
+      throw error
+    }
   }
 
   /**
@@ -271,13 +331,25 @@ export class N2YOClient {
       )
     }
 
+    const date = new Date(utcTimestamp * 1000)
+
+    if (!timeZone || timeZone.toUpperCase() === 'UTC') {
+      return `${date.toISOString().replace('T', ' ').slice(0, 19)} UTC`
+    }
+
     try {
-      const date = new Date(utcTimestamp * 1000)
+      const supportedTimeZones = Intl.supportedValuesOf('timeZone')
+      if (!supportedTimeZones.includes(timeZone)) {
+        console.warn(`Invalid time zone '${timeZone}'. Falling back to UTC.`)
+        return `${date.toISOString().replace('T', ' ').slice(0, 19)} UTC`
+      }
+
       const formatter = new Intl.DateTimeFormat('en-US', {
         timeZone,
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
+        hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
         hour12: false,
@@ -290,8 +362,11 @@ export class N2YOClient {
       const minute = parts.find((p) => p.type === 'minute')!.value
       const second = parts.find((p) => p.type === 'second')!.value
       return `${year}-${month}-${day} ${hour}:${minute}:${second}`
-    } catch {
-      throw new InvalidParameterError('timeZone', timeZone, 'Invalid time zone')
+    } catch (error) {
+      console.warn(
+        `Failed to format time zone '${timeZone}': ${error}. Falling back to UTC.`,
+      )
+      return `${date.toISOString().replace('T', ' ').slice(0, 19)} UTC`
     }
   }
 }
