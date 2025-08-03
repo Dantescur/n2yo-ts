@@ -37,7 +37,7 @@
   "scripts": {
     "lint": "eslint --cache .",
     "lint:fix": "pnpm run lint --fix",
-    "build": "tsdown && rm -f ./dist/cli.cjs ./dist/cli.d.cts",
+    "build": "tsdown && rm -f ./dist/cli.cjs ./dist/cli.d.cts ./dist/cli.d.ts",
     "dev": "tsdown --watch",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
