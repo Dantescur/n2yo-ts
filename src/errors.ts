@@ -3,8 +3,8 @@
  * Extends the native JavaScript Error class.
  */
 export class N2YOError extends Error {
-  constructor(message: string) {
-    super(message)
+  constructor(message: string, cause?: unknown) {
+    super(message, { cause })
     this.name = 'N2YOError'
   }
 }

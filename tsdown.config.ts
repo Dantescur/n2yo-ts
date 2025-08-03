@@ -12,11 +12,11 @@ export default defineConfig({
   attw: {
     excludeEntrypoints: ['cli'],
   },
-  external: ['node:process', 'node:fs', 'node:path', 'node:os'],
+  // external: ['node:process', 'node:fs', 'node:path', 'node:os'],
   outDir: './dist',
+  nodeProtocol: 'strip',
   dts: true,
-  shims: true,
-  minify: true,
+  // shims: true,
   format: ['es', 'cjs'],
   report: true,
 })
