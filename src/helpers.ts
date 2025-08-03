@@ -1,6 +1,5 @@
 import {
   SatelliteCategories,
-  type Coordinate,
   type SatelliteCategoryId,
   type SatelliteCategoryName,
 } from './types'
@@ -68,7 +67,11 @@ export function getAllCategories(): Array<{
  * Calculates the great-circle distance between two points on Earth using the Haversine formula.
  *
  * @param point1 - First geographic coordinate
+ * @param point1.lat - Latitude of the first point
+ * @param point1.lng - Longitude of the first point
  * @param point2 - Second geographic coordinate
+ * @param point2.lat - Latitude of the second point
+ * @param point2.lng - Longitude of the second point
  * @returns Distance between the two points in kilometers.
  *
  * @example

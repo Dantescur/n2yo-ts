@@ -12,7 +12,7 @@ export default defineConfig({
   attw: {
     excludeEntrypoints: ['cli'],
   },
-  external: ['node:process'],
+  external: ['node:process', 'node:fs', 'node:path', 'node:os'],
   outDir: './dist',
   dts: true,
   shims: true,

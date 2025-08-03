@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 
+import { existsSync, readFileSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+import process from 'node:process'
 import { Command, Option } from '@commander-js/extra-typings'
+import prompts from 'prompts'
 import packageJson from '../package.json'
 import {
   calculateDistance,
@@ -81,9 +86,43 @@ const opts = {
 }
 
 // Initialize client
-const getClient = (apiKey: string) => {
-  if (!apiKey) program.error('API key required')
-  return createN2YOClient(apiKey)
+const getClient = async (apiKey?: string) => {
+  if (apiKey) {
+    debug('Using API key from command-line options')
+    return createN2YOClient(apiKey)
+  }
+  const envApiKey = process.env.N2YO_API_KEY
+  if (envApiKey) {
+    debug('Using API key from N2YO_API_KEY environment variable')
+    return createN2YOClient(envApiKey)
+  }
+
+  const configPath = join(homedir(), '.n2yo-ts', 'config.json')
+  if (existsSync(configPath)) {
+    try {
+      const config = JSON.parse(readFileSync(configPath, 'utf-8'))
+      if (config.apiKey) {
+        debug('Using API key from config file: ', configPath)
+        return createN2YOClient(config.apiKey)
+      }
+    } catch (error) {
+      console.warn(`Failed to read or parse config file ${configPath}:`, error)
+    }
+  }
+
+  const response = await prompts({
+    type: 'password',
+    name: 'apiKey',
+    message: 'Enter your N2YO API key:',
+    validate: (value: string) => (value ? true : 'API key is required'),
+  })
+
+  if (!response.apiKey) {
+    program.error('API key required')
+  }
+
+  debug('Using API key from user prompt')
+  return createN2YOClient(response.apiKey)
 }
 
 // Resolve satellite
@@ -110,7 +149,7 @@ const program = new Command()
   .name('n2yo-ts')
   .description('CLI for N2YO satellite tracking API')
   .version(packageJson.version)
-  .requiredOption('--apiKey <key>', 'N2YO API key')
+  .option('--apiKey <key>', 'N2YO API key')
   .option('-v, --verbose', 'Enable verbose output', false)
 
 // Commands
@@ -119,7 +158,7 @@ program
   .description('Retrieve TLE for a satellite')
   .addOption(opts.sat)
   .action(async (options: SatOption) => {
-    const client = getClient(program.opts().apiKey)
+    const client = await getClient(program.opts().apiKey)
     try {
       const { name } = resolveSatellite(options.sat)
       debug('TLE', { sat: options.sat })
@@ -148,7 +187,7 @@ program
   )
   .action(
     async (options: SatOption & LocationOptions & { seconds: number }) => {
-      const client = getClient(program.opts().apiKey)
+      const client = await getClient(program.opts().apiKey)
       try {
         const { id } = resolveSatellite(options.sat)
         debug('Positions', options)
@@ -206,7 +245,7 @@ program
         LocationOptions &
         TimeOptions & { minVisibility: number },
     ) => {
-      const client = getClient(program.opts().apiKey)
+      const client = await getClient(program.opts().apiKey)
       try {
         const { id } = resolveSatellite(options.sat)
         debug('Visual Passes', options)
@@ -259,7 +298,7 @@ program
         LocationOptions &
         TimeOptions & { minElevation: number },
     ) => {
-      const client = getClient(program.opts().apiKey)
+      const client = await getClient(program.opts().apiKey)
       try {
         const { id } = resolveSatellite(options.sat)
         debug('Radio Passes', options)
@@ -314,7 +353,7 @@ program
         category: SatelliteCategoryId
       },
     ) => {
-      const client = getClient(program.opts().apiKey)
+      const client = await getClient(program.opts().apiKey)
       try {
         debug('Above', options)
         const {

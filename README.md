@@ -218,11 +218,38 @@ yarn global add n2yo-ts
 
 ### CLI Usage
 
-Run `n2yo-ts --help` to see all available commands and options. The CLI requires an `--apiKey` option for all commands, which you can obtain from [N2YO.com](https://www.n2yo.com/api/).
+Run `n2yo-ts --help` to see all available commands and options. The CLI
+requires an N2YO API key, which you can obtain
+from [N2YO.com](https://n2yo.com/login/edit). You can provide the API key in
+several ways:
+
+1. Command-line option (highest priority):
 
 ```bash
 n2yo-ts <command> --apiKey <your-api-key> [options]
 ```
+
+2. Enviroment variable: Set the N2YO_API_KEY enviroment variable:
+
+```bash
+export N2YO_API_KEY=your-api-key
+n2yo-ts <command> [options]
+```
+
+3. Configuration file: Create a file at `~/.n2yo-ts/config.json` with the
+   following content:
+
+```json
+{ "apiKey": "your-api-key" }
+```
+
+Then run:
+
+```bash
+n2yo-ts <command> [options]
+```
+
+4. Interactive prompt: If no API key is provided via the above methods, the CLI will prompt you to enter it.
 
 **Global Options**:
 
@@ -236,7 +263,7 @@ n2yo-ts <command> --apiKey <your-api-key> [options]
 Retrieve the Two-Line Element (TLE) data for a satellite by its common name (e.g., `ISS`, `HUBBLE`) or NORAD ID.
 
 ```bash
-n2yo-ts tle --sat ISS --apiKey <key>
+n2yo-ts tle --sat ISS
 ```
 
 **Output**:
@@ -258,7 +285,7 @@ Predict satellite positions for the specified location and time window.
 - `--seconds <seconds>`: Seconds of prediction (0–300, default: 60).
 
 ```bash
-n2yo-ts positions --sat ISS --lat 40.7128 --lng -74.006 --alt 0 --seconds 60 --apiKey <key>
+n2yo-ts positions --sat ISS --lat 40.7128 --lng -74.006 --alt 0 --seconds 60
 ```
 
 **Output**:
@@ -283,7 +310,7 @@ Predict visible (sunlit) satellite passes for the specified location.
 - `--tz <timezone>`: Time zone for output (e.g., `America/New_York`, default: `UTC`).
 
 ```bash
-n2yo-ts visualpasses --sat ISS --lat 35.6762 --lng 139.6503 --days 3 --min-visibility 300 --tz Asia/Tokyo --apiKey <key>
+n2yo-ts visualpasses --sat ISS --lat 35.6762 --lng 139.6503 --days 3 --min-visibility 300 --tz Asia/Tokyo
 ```
 
 **Output**:
@@ -307,7 +334,7 @@ Predict radio passes (no sunlight requirement) for the specified location.
 - `--tz <timezone>`: Time zone for output (e.g., `America/New_York`, default: `UTC`).
 
 ```bash
-n2yo-ts radiopasses --sat 42784 --lat 52.52 --lng 13.405 --days 7 --min-elevation 30 --tz Europe/Berlin --apiKey <key>
+n2yo-ts radiopasses --sat 42784 --lat 52.52 --lng 13.405 --days 7 --min-elevation 30 --tz Europe/Berlin
 ```
 
 **Output**:
@@ -329,7 +356,7 @@ List satellites currently above a location.
 - `--category <id>`: Satellite category ID (0 for all, default: 1).
 
 ```bash
-n2yo-ts above --lat 34.0522 --lng -118.2437 --radius 90 --category 52 --apiKey <key>
+n2yo-ts above --lat 34.0522 --lng -118.2437 --radius 90 --category 52
 ```
 
 **Output**:
