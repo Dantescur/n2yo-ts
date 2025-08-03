@@ -2,15 +2,22 @@
 import { defineConfig } from 'tsdown'
 
 export default defineConfig({
-  entry: ['./src/index.ts'],
+  entry: {
+    index: './src/index.ts',
+    cli: './src/cli.ts',
+  },
   platform: 'neutral',
   target: 'es2022',
-  pub: true,
+  publint: true,
+  attw: {
+    excludeEntrypoints: ['cli'],
+  },
+  external: ['node:process'],
   outDir: './dist',
   dts: true,
   exports: true,
   shims: true,
-  format: ['esm'],
+  format: ['es', 'cjs'],
   report: true,
 })
 /* v8 ignore stop */

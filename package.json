@@ -6,9 +6,6 @@
   "description": "A strongly-typed TypeScript client for the N2YO.com satellite tracking API.",
   "type": "module",
   "license": "MIT",
-  "bin": {
-    "n2yo-ts": "./dist/cli.js"
-  },
   "homepage": "https://github.com/Dantescur/n2yo-ts#readme",
   "bugs": {
     "url": "https://github.com/Dantescur/n2yo-ts/issues"
@@ -22,12 +19,22 @@
     "README.md",
     "dist/**/*"
   ],
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/index.d.cts",
   "exports": {
-    ".": "./dist/index.js",
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./cli": {
+      "import": "./dist/cli.js",
+      "require": "./dist/cli.cjs"
+    },
     "./package.json": "./package.json"
+  },
+  "bin": {
+    "n2yo-ts": "./dist/cli.js"
   },
   "publishConfig": {
     "access": "public"
@@ -43,6 +50,10 @@
     "format": "prettier --cache --write .",
     "release": "bumpp && pnpm publish",
     "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "@commander-js/extra-typings": "^14.0.0",
+    "commander": "^14.0.0"
   },
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.2",
@@ -62,8 +73,5 @@
   "engines": {
     "node": ">=20.19.0"
   },
-  "prettier": "@sxzz/prettier-config",
-  "dependencies": {
-    "commander": "^14.0.0"
-  }
+  "prettier": "@sxzz/prettier-config"
 }
