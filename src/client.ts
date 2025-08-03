@@ -265,117 +265,42 @@ export class N2YOClient {
    * @throws {N2YOError} for any other non-2xx response.
    */
 
-  private async makeRequest<T>(
-  endpoint: string,
-  customCacheTtl?: number,
-): Promise<T> {
-  const cacheKey = this.getCacheKey(endpoint);
+  private makeRequest<T>(
+    endpoint: string,
+    customCacheTtl?: number,
+  ): Promise<T> {
+    const cacheKey = this.getCacheKey(endpoint)
 
-  // Try cache first
-  const cached = this.getCachedResponse<T>(cacheKey);
-  if (cached) {
-    return Promise.resolve(cached);
-  }
-
-  // Check rate limiting
-  if (!this.isWithinRateLimit()) {
-    if (!this.config.rateLimit.queueRequests) {
-      throw new RateLimitError('Rate limit exceeded and queueing is disabled');
+    // Try cache first
+    const cached = this.getCachedResponse<T>(cacheKey)
+    if (cached) {
+      return Promise.resolve(cached)
     }
 
-    if (this.config.debug) {
-      this.debugLog(`[N2YO] Rate limited, queueing request: ${cacheKey}`);
+    // Check rate limiting
+    if (!this.isWithinRateLimit()) {
+      if (!this.config.rateLimit.queueRequests) {
+        throw new RateLimitError('Rate limit exceeded and queueing is disabled')
+      }
+
+      if (this.config.debug) {
+        this.debugLog(`[N2YO] Rate limited, queueing request: ${cacheKey}`)
+      }
+
+      // Queue the request
+      return new Promise<T>((resolve, reject) => {
+        this.rateLimitState.queue.push({
+          resolve,
+          reject,
+          request: () =>
+            this.makeActualRequest<T>(endpoint, cacheKey, customCacheTtl),
+        })
+        this.processQueue()
+      })
     }
 
-    // Queue the request
-    return new Promise<T>((resolve, reject) => {
-      this.rateLimitState.queue.push({
-        resolve,
-        reject,
-        request: () =>
-          this.makeActualRequest<T>(endpoint, cacheKey, customCacheTtl),
-      });
-      this.processQueue();
-    });
+    return this.makeActualRequest<T>(endpoint, cacheKey, customCacheTtl)
   }
-
-  return this.makeActualRequest<T>(endpoint, cacheKey, customCacheTtl);
-}
-
-private async makeActualRequest<T>(
-  endpoint: string,
-  cacheKey: string,
-  customCacheTtl?: number,
-): Promise<T> {
-  const url = `${this.baseUrl}/${endpoint}&apiKey=${this.apiKey}`;
-
-  if (this.config.debug) {
-    this.debugLog(`[N2YO] Making request to: ${cacheKey}`);
-    console.time(`[N2YO] ${cacheKey}`);
-  }
-
-  this.recordRequest();
-
-  let response: Response;
-  try {
-    response = await fetch(url);
-  } catch (error) {
-    throw new N2YOError(
-      `Network error: Failed to connect to N2YO API. Please check your internet connection.`,
-      error,
-    );
-  }
-
-  if (this.config.debug) {
-    console.timeEnd(`[N2YO] ${cacheKey}`);
-    this.debugLog(`[N2YO] Response status: ${response.status}`);
-  }
-
-  // First check for API key errors which come as 200 OK with error in body
-  let data: any;
-  try {
-    data = await response.json();
-  } catch (error) {
-    throw new N2YOError(
-      `Invalid API response: Could not parse JSON response`,
-      { cause: error },
-    );
-  }
-
-  if (data && typeof data === 'object' && 'error' in data) {
-    if (data.error === 'Invalid API Key!') {
-      throw new InvalidParameterError(
-        'apiKey',
-        this.apiKey,
-        'The provided N2YO API key is invalid. Please check your key and try again.',
-      );
-    }
-    throw new N2YOError(`API error: ${data.error}`);
-  }
-
-  if (!response.ok) {
-    if (response.status === 429) {
-      throw new RateLimitError();
-    }
-    throw new N2YOError(
-      `API request failed: ${response.status} ${response.statusText}`,
-      { cause: data },
-    );
-  }
-
-  if (data === null || typeof data !== 'object') {
-    throw new N2YOError(
-      `Invalid API response: Expected JSON object, got ${data === null ? 'null' : typeof data}`,
-    );
-  }
-
-  // Cache the successful response
-  this.setCachedResponse(cacheKey, data, customCacheTtl);
-
-  return data as T;
-}
-
-  
 
   /**
    * Make the actual HTTP request
