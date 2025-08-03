@@ -178,6 +178,7 @@ export interface AboveResponse {
  * The string values are human-readable category names.
  */
 export const SatelliteCategories = {
+  0: 'All',
   1: 'Brightest',
   2: 'ISS',
   3: 'Weather',
@@ -239,7 +240,7 @@ export const SatelliteCategories = {
 /**
  * Type representing valid satellite category IDs (1-56).
  */
-export type SatelliteCategoryId = keyof typeof SatelliteCategories
+export type SatelliteCategoryId = keyof typeof SatelliteCategories | '0'
 
 /**
  * Type representing valid satellite category names.
