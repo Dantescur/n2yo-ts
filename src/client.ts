@@ -359,7 +359,7 @@ export class N2YOClient {
    * ```
    */
   getTle(id: number): Promise<TleResponse> {
-    return this.makeRequest<TleResponse>(`tle/${id}`)
+    return this.makeRequest<TleResponse>(`tle/${id}`, 30 * 60 * 1000)
   }
 
   /**
@@ -417,6 +417,7 @@ export class N2YOClient {
 
     const response = await this.makeRequest<PositionsResponse>(
       `positions/${id}/${observerLat}/${observerLng}/${observerAlt}/${seconds}`,
+      2 * 60 * 1000,
     )
     if (!response.positions) {
       return { ...response, positions: [] }
@@ -641,6 +642,55 @@ export class N2YOClient {
   private debugLog(message: string): void {
     if (this.config.debug) {
       console.info(`[N2YO] ${message}`)
+    }
+  }
+
+  /**
+   * Clear the cache manually
+   */
+  clearCache(): void {
+    this.cache.clear()
+    if (this.config.debug) {
+      this.debugLog('[N2YO] Cache cleared')
+    }
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats() {
+    const now = Date.now()
+    let expired = 0
+
+    for (const entry of this.cache.values()) {
+      if (now - entry.timestamp > entry.ttl) {
+        expired++
+      }
+    }
+
+    return {
+      total: this.cache.size,
+      expired,
+      valid: this.cache.size - expired,
+      maxEntries: this.config.cache.maxEntries,
+    }
+  }
+
+  /**
+   * Get rate limiting statistics
+   */
+  getRateLimitStats() {
+    const now = Date.now()
+    const oneHourAgo = now - 60 * 60 * 1000
+    const recentRequests = this.rateLimitState.requests.filter(
+      (t) => t > oneHourAgo,
+    )
+
+    return {
+      requestsThisHour: recentRequests.length,
+      requestsPerHourLimit: this.config.rateLimit.requestsPerHour,
+      queuedRequests: this.rateLimitState.queue.length,
+      canMakeRequest: this.isWithinRateLimit(),
     }
   }
 }
