@@ -15,8 +15,8 @@ export default defineConfig({
   external: ['node:process'],
   outDir: './dist',
   dts: true,
-  exports: true,
   shims: true,
+  minify: true,
   format: ['es', 'cjs'],
   report: true,
 })
