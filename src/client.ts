@@ -64,32 +64,59 @@ export class N2YOClient {
    * @throws {RateLimitError} on HTTP 429.
    * @throws {N2YOError} for any other non-2xx response.
    */
+
   private async makeRequest<T>(endpoint: string): Promise<T> {
     const url = `${this.baseUrl}/${endpoint}&apiKey=${this.apiKey}`
-    const response = await fetch(url)
+    let response: Response;
+
+    try {
+      response = await fetch(url);
+    } catch (error) {
+      throw new N2YOError(
+        `Network error: Failed to connect to N2YO API. Please check your internet connection.`,
+        error
+      );
+    }
+
+    // First check for API key errors which come as 200 OK with error in body
+    let data: any;
+    try {
+      data = await response.json();
+    } catch (error) {
+      throw new N2YOError(
+        `Invalid API response: Could not parse JSON response`,
+        { cause: error }
+      );
+    }
+
+    if (data && typeof data === 'object' && 'error' in data) {
+      if (data.error === 'Invalid API Key!') {
+        throw new InvalidParameterError(
+          'apiKey',
+          this.apiKey,
+          'The provided N2YO API key is invalid. Please check your key and try again.'
+        );
+      }
+      throw new N2YOError(`API error: ${data.error}`);
+    }
 
     if (!response.ok) {
       if (response.status === 429) {
-        throw new RateLimitError()
+        throw new RateLimitError();
       }
-      const text = await response.text()
       throw new N2YOError(
-        `API request failed: ${response.status} ${response.statusText} - ${text}`,
-      )
+        `API request failed: ${response.status} ${response.statusText}`,
+        { cause: data }
+      );
     }
 
-    const data = await response.json()
-    if (data === null) {
+    if (data === null || typeof data !== 'object') {
       throw new N2YOError(
-        `Invalid API response: Expected JSON object, got null`,
-      )
+        `Invalid API response: Expected JSON object, got ${data === null ? 'null' : typeof data}`
+      );
     }
-    if (typeof data !== 'object') {
-      throw new N2YOError(
-        `Invalid API response: Expected JSON object, got ${typeof data}`,
-      )
-    }
-    return data as T
+
+    return data as T;
   }
 
   /**
