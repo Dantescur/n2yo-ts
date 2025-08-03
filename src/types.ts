@@ -1,3 +1,44 @@
+export interface N2YOClientConfig {
+  /** Enable debug logging */
+  debug?: boolean
+  /** Cache configuration */
+  cache?: {
+    enabled: boolean
+    /** Cache TTL in milliseconds (default: 5 minutes) */
+    ttlMs?: number
+    /** Maximun cache entries (default: 100) */
+    maxEntries?: number
+  }
+  /** Rate limit configuration */
+  rateLimit?: {
+    enabled?: boolean
+    /** Request per hour (default: 1000 based on N2YO limits) */
+    requestsPerHour?: number
+    /** Enable request queuing when rate limited */
+    queueRequests?: boolean
+  }
+}
+
+export interface CacheEntry<T> {
+  data: T
+  timestamp: number
+  ttl: number
+}
+
+export interface RateLimitState {
+  requests: number[]
+  queue: Array<{
+    resolve: (value: any) => void
+    reject: (error: any) => void
+    request: () => Promise<any>
+  }>
+  processing: boolean
+}
+
+export interface N2YOErrorResponse {
+  error?: string
+}
+
 /**
  * Core interface representing common response metadata
  * returned by all N2YO API endpoints.

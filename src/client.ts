@@ -3,8 +3,12 @@ import {
   COMMON_SATELLITES,
   SatelliteCategories,
   type AboveResponse,
+  type CacheEntry,
+  type N2YOClientConfig,
+  type N2YOErrorResponse,
   type PositionsResponse,
   type RadioPassesResponse,
+  type RateLimitState,
   type SatelliteCategoryId,
   type SatelliteCategoryName,
   type TleResponse,
@@ -12,33 +16,52 @@ import {
 } from './types'
 
 /**
- * N2YO API client for Node, Deno, Bun and browsers.
+ * A TypeScript client for the N2YO REST API, supporting Node, Deno, Bun, and browsers.
  *
  * @remarks
- * This class wraps the public [N2YO REST API](https://www.n2yo.com/api/)
- * and provides strongly-typed helpers for every endpoint.
+ * This class provides strongly-typed methods to interact with the [N2YO REST API](https://www.n2yo.com/api/),
+ * including satellite TLEs, position predictions, visual/radio passes, and objects above a location.
+ * All methods return native `Promise`s, automatically handle API key injection, and manage:
+ * - **Rate-limiting**: Enforces N2YO’s 1000 requests/hour limit with optional queuing (throws {@link RateLimitError} on HTTP 429).
+ * - **Caching**: Stores responses in an LRU cache with configurable TTL and size (default: 5 minutes, 100 entries).
+ * - **Error handling**: Throws {@link N2YOError} for non-2xx responses or {@link InvalidParameterError} for invalid inputs.
  *
- * All methods return native `Promises` and automatically inject your API key,
- * handle rate-limiting (`429`) and other HTTP errors by throwing
- * {@link N2YOError}, {@link RateLimitError} or {@link InvalidParameterError}
- *
- * Common satellites can be queried by name using {@link getTleByName}
+ * Common satellites can be queried by name using {@link getTleByName}. See {@link getTle}, {@link getPositions},
+ * {@link getVisualPasses}, {@link getRadioPasses}, and {@link getAbove} for specific endpoints.
  *
  * @example
  * ```ts
  * import { N2YOClient } from 'n2yo-ts';
  *
- * const n2yo = new N2YOClient('YOUR_API_KEY');
+ * const client = new N2YOClient('YOUR_API_KEY', { debug: true });
  *
- * const iss = await n2yo.getTleByName('ISS') // Uses NORAD ID 25544
- * console.log(iss.tle);
+ * // Fetch TLE for the International Space Station (ISS)
+ * const issTle = await client.getTleByName('ISS'); // Uses NORAD ID 25544
+ * console.log(issTle.tle);
+ *
+ * // Get satellite positions for the next 60 seconds
+ * const positions = await client.getPositions(25544, 40.7128, -74.0060, 0, 60);
+ * console.log(positions.positions);
  * ```
+ *
+ * @see {@link https://www.n2yo.com/api/} for API documentation.
  */
 export class N2YOClient {
   /** Base URL for all requests. */
   private readonly baseUrl: string = 'https://api.n2yo.com/rest/v1/satellite'
   /** Private API key supplied at construction. */
   private readonly apiKey: string
+  /** Config options */
+  private readonly config: Required<N2YOClientConfig>
+
+  // Cache implementation
+  private cache = new Map<string, CacheEntry<any>>()
+
+  private rateLimitState: RateLimitState = {
+    requests: [],
+    processing: false,
+    queue: [],
+  }
 
   /**
    * Create a new client instance.
@@ -48,11 +71,172 @@ export class N2YOClient {
    * @throws {InvalidParameterError} If the key is missing or empty.
    *
    */
-  constructor(apiKey: string) {
+  constructor(apiKey: string, config: N2YOClientConfig = {}) {
     if (!apiKey) {
       throw new InvalidParameterError('apiKey', apiKey, 'API key is required')
     }
     this.apiKey = apiKey
+    this.config = {
+      debug: false,
+      cache: {
+        enabled: true,
+        ttlMs: 5 * 60 * 1000, // 5 minutes
+        maxEntries: 100,
+        ...config.cache,
+      },
+      rateLimit: {
+        enabled: true,
+        requestsPerHour: 1000,
+        queueRequests: true,
+        ...config.rateLimit,
+      },
+      ...config,
+    }
+
+    if (this.config.cache.enabled) {
+      setInterval(() => this.cleanupCache(), 60000) // Every minute
+    }
+  }
+
+  /**
+   * Generate cache key for a request
+   */
+  private getCacheKey(endpoint: string) {
+    return endpoint.split('&apiKey=')[0] || endpoint
+  }
+
+  /**
+   * Get cached response if available
+   */
+  private getCachedResponse<T>(cacheKey: string): T | null {
+    if (!this.config.cache.enabled) return null
+    const entry = this.cache.get(cacheKey)
+    if (!entry) return null
+
+    const now = Date.now()
+    if (now - entry.timestamp > entry.ttl) {
+      this.cache.delete(cacheKey)
+      return null
+    }
+
+    if (this.config.debug) {
+      this.debugLog(`[N2YO] Cache HIT for: ${cacheKey}`)
+    }
+
+    return entry.data
+  }
+
+  /**
+   * Cache a response
+   */
+  private setCachedResponse<T>(
+    cacheKey: string,
+    data: T,
+    customTtl?: number,
+  ): void {
+    if (!this.config.cache.enabled) return
+
+    // Implement LRU eviction if cache is full
+    if (this.cache.size >= (this.config.cache.maxEntries ?? 100)) {
+      const firstKey = this.cache.keys().next().value
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey as string)
+      }
+    }
+
+    const ttl = customTtl ?? this.config.cache.ttlMs
+    this.cache.set(cacheKey, {
+      data,
+      timestamp: Date.now(),
+      ttl: ttl!, // Non-null assertion since ttl is guaranteed to be defined
+    })
+
+    if (this.config.debug) {
+      this.debugLog(`[N2YO] Cached response for: ${cacheKey} (TTL: ${ttl}ms)`)
+    }
+  }
+
+  /**
+   * Clean up expired cache entries
+   */
+  private cleanupCache(): void {
+    const now = Date.now()
+    let cleaned = 0
+
+    for (const [key, entry] of this.cache.entries()) {
+      if (now - entry.timestamp > entry.ttl) {
+        this.cache.delete(key)
+        cleaned++
+      }
+    }
+
+    if (this.config.debug && cleaned > 0) {
+      this.debugLog(`[N2YO] Cleaned up ${cleaned} expired cache entries`)
+    }
+  }
+
+  /**
+   * Check if we're within rate limits
+   */
+  private isWithinRateLimit(): boolean {
+    if (!this.config.rateLimit.enabled) return true
+
+    const now = Date.now()
+    const oneHourAgo = now - 60 * 60 * 1000
+
+    // Clean old requests
+    this.rateLimitState.requests = this.rateLimitState.requests.filter(
+      (timestamp) => timestamp > oneHourAgo,
+    )
+
+    return (
+      this.rateLimitState.requests.length <
+      (this.config.rateLimit.requestsPerHour ?? 1000)
+    )
+  }
+
+  /**
+   * Record a request for rate limiting
+   */
+  private recordRequest(): void {
+    if (this.config.rateLimit.enabled) {
+      this.rateLimitState.requests.push(Date.now())
+    }
+  }
+
+  /**
+   * Process queued requests
+   */
+  private async processQueue(): Promise<void> {
+    if (
+      this.rateLimitState.processing ||
+      this.rateLimitState.queue.length === 0
+    ) {
+      return
+    }
+
+    this.rateLimitState.processing = true
+
+    while (this.rateLimitState.queue.length > 0 && this.isWithinRateLimit()) {
+      const { resolve, reject, request } = this.rateLimitState.queue.shift()!
+
+      try {
+        const result = await request()
+        resolve(result)
+      } catch (error) {
+        reject(error)
+      }
+
+      // Small delay between requests to be nice to the API
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+
+    this.rateLimitState.processing = false
+
+    // If there are still queued requests, schedule next processing
+    if (this.rateLimitState.queue.length > 0) {
+      setTimeout(() => this.processQueue(), 1000)
+    }
   }
 
   /**
@@ -64,39 +248,115 @@ export class N2YOClient {
    * @throws {RateLimitError} on HTTP 429.
    * @throws {N2YOError} for any other non-2xx response.
    */
-  private async makeRequest<T>(endpoint: string): Promise<T> {
-    const url = `${this.baseUrl}/${endpoint}&apiKey=${this.apiKey}`
-    const response = await fetch(url)
+  // eslint-disable-next-line require-await
+  private async makeRequest<T>(
+    endpoint: string,
+    customCacheTtl?: number,
+  ): Promise<T> {
+    const cacheKey = this.getCacheKey(endpoint)
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        throw new RateLimitError()
+    // Try cache first
+    const cached = this.getCachedResponse<T>(cacheKey)
+    if (cached) {
+      return Promise.resolve(cached)
+    }
+
+    // Check rate limiting
+    if (!this.isWithinRateLimit()) {
+      if (!this.config.rateLimit.queueRequests) {
+        throw new RateLimitError('Rate limit exceeded and queueing is disabled')
       }
-      const text = await response.text()
-      throw new N2YOError(
-        `API request failed: ${response.status} ${response.statusText} - ${text}`,
-      )
+
+      if (this.config.debug) {
+        this.debugLog(`[N2YO] Rate limited, queueing request: ${cacheKey}`)
+      }
+
+      // Queue the request
+      return new Promise<T>((resolve, reject) => {
+        this.rateLimitState.queue.push({
+          resolve,
+          reject,
+          request: () =>
+            this.makeActualRequest<T>(endpoint, cacheKey, customCacheTtl),
+        })
+        this.processQueue()
+      })
     }
 
-    const data = await response.json()
-    if (data === null) {
-      throw new N2YOError(
-        `Invalid API response: Expected JSON object, got null`,
-      )
+    return this.makeActualRequest<T>(endpoint, cacheKey, customCacheTtl)
+  }
+
+  /**
+   * Make the actual HTTP request
+   */
+  private async makeActualRequest<T>(
+    endpoint: string,
+    cacheKey: string,
+    customCacheTtl?: number,
+  ): Promise<T> {
+    const url = `${this.baseUrl}/${endpoint}&apiKey=${this.apiKey}`
+
+    if (this.config.debug) {
+      this.debugLog(`[N2YO] Making request to: ${cacheKey}`)
+      // eslint-disable-next-line no-console
+      console.time(`[N2YO] ${cacheKey}`)
     }
-    if (typeof data !== 'object') {
-      throw new N2YOError(
-        `Invalid API response: Expected JSON object, got ${typeof data}`,
-      )
+
+    this.recordRequest()
+
+    try {
+      const response = await fetch(url)
+
+      if (this.config.debug) {
+        // eslint-disable-next-line no-console
+        console.timeEnd(`[N2YO] ${cacheKey}`)
+        this.debugLog(`[N2YO] Response status: ${response.status}`)
+      }
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          throw new RateLimitError('API rate limit exceeded')
+        }
+
+        // Try to parse N2YO error response
+        try {
+          const errorData = (await response.json()) as N2YOErrorResponse
+          throw new N2YOError(
+            `API request failed: ${errorData.error || response.statusText}`,
+          )
+        } catch {
+          throw new N2YOError(`API request failed: ${response.statusText}`)
+        }
+      }
+
+      const data = (await response.json()) as T
+
+      // Cache the successful response
+      this.setCachedResponse(cacheKey, data, customCacheTtl)
+
+      return data
+    } catch (error) {
+      if (this.config.debug) {
+        this.debugLog(`[N2YO] Request failed: ${error}`)
+      }
+      throw error
     }
-    return data as T
   }
 
   /**
    * Retrieve the latest Two-Line Element set (TLE) for a satellite.
    *
-   * @param id – NORAD catalog number (e.g. `25544` for the ISS).
-   * @returns Promise resolving to {@link TleResponse}.
+   * @param id - NORAD catalog number (e.g., `25544` for the ISS).
+   * @returns A `Promise` resolving to a {@link TleResponse} containing the satellite’s TLE data.
+   * @throws {N2YOError} If the API request fails (e.g., invalid NORAD ID).
+   * @throws {RateLimitError} If the API rate limit is exceeded (HTTP 429).
+   *
+   * @example
+   * ```ts
+   * const client = new N2YOClient('YOUR_API_KEY');
+   * const tle = await client.getTle(25544); // ISS
+   * console.log(tle.tle); // Outputs: "1 25544U 98067A   ..."
+   * ```
    */
   getTle(id: number): Promise<TleResponse> {
     return this.makeRequest<TleResponse>(`tle/${id}`)
@@ -123,14 +383,22 @@ export class N2YOClient {
   /**
    * Predict future positions (“ground track”) for a satellite.
    *
-   * @param id – NORAD catalog number.
-   * @param observerLat – observer latitude in decimal degrees (-90 … 90).
-   * @param observerLng – observer longitude in decimal degrees (-180 … 180).
-   * @param observerAlt – observer altitude **above sea level** in **meters**.
-   * @param seconds – how many seconds of prediction to return (max `300`).
-   * @returns Promise resolving to {@link PositionsResponse}.
+   * @param id - NORAD catalog number (e.g., `25544` for the ISS).
+   * @param observerLat - Observer latitude in decimal degrees (-90 to 90).
+   * @param observerLng - Observer longitude in decimal degrees (-180 to 180).
+   * @param observerAlt - Observer altitude above sea level in meters (e.g., `0` for sea level).
+   * @param seconds - Seconds of prediction to return (1 to 300).
+   * @returns A `Promise` resolving to a {@link PositionsResponse} with predicted satellite positions.
+   * @throws {InvalidParameterError} If `seconds` is outside 1–300 or other parameters are invalid.
+   * @throws {N2YOError} If the API request fails.
+   * @throws {RateLimitError} If the API rate limit is exceeded (HTTP 429).
    *
-   * @throws {@link InvalidParameterError} if `seconds > 300`.
+   * @example
+   * ```ts
+   * const client = new N2YOClient('YOUR_API_KEY');
+   * const positions = await client.getPositions(25544, 40.7128, -74.0060, 0, 60);
+   * console.log(positions.positions); // Array of { satlatitude, satlongitude, ... }
+   * ```
    */
   async getPositions(
     id: number,
@@ -367,6 +635,12 @@ export class N2YOClient {
         `Failed to format time zone '${timeZone}': ${error}. Falling back to UTC.`,
       )
       return `${date.toISOString().replace('T', ' ').slice(0, 19)} UTC`
+    }
+  }
+
+  private debugLog(message: string): void {
+    if (this.config.debug) {
+      console.info(`[N2YO] ${message}`)
     }
   }
 }

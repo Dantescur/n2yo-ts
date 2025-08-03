@@ -19,8 +19,8 @@ export class N2YOError extends Error {
  * - Above: 100 requests/hour
  */
 export class RateLimitError extends N2YOError {
-  constructor() {
-    super('API rate limit exceeded')
+  constructor(message?: string) {
+    super(message ?? 'API rate limit exceeded')
     this.name = 'RateLimitError'
   }
 }
