@@ -1,3 +1,44 @@
+export interface N2YOClientConfig {
+  /** Enable debug logging */
+  debug?: boolean
+  /** Cache configuration */
+  cache?: {
+    enabled: boolean
+    /** Cache TTL in milliseconds (default: 5 minutes) */
+    ttlMs?: number
+    /** Maximun cache entries (default: 100) */
+    maxEntries?: number
+  }
+  /** Rate limit configuration */
+  rateLimit?: {
+    enabled?: boolean
+    /** Request per hour (default: 1000 based on N2YO limits) */
+    requestsPerHour?: number
+    /** Enable request queuing when rate limited */
+    queueRequests?: boolean
+  }
+}
+
+export interface CacheEntry<T> {
+  data: T
+  timestamp: number
+  ttl: number
+}
+
+export interface RateLimitState {
+  requests: number[]
+  queue: Array<{
+    resolve: (value: any) => void
+    reject: (error: any) => void
+    request: () => Promise<any>
+  }>
+  processing: boolean
+}
+
+export interface N2YOErrorResponse {
+  error?: string
+}
+
 /**
  * Core interface representing common response metadata
  * returned by all N2YO API endpoints.
@@ -267,4 +308,15 @@ export const COMMON_SATELLITES: Record<string, number> = {
   NOAA_19: 33591,
   GOES_16: 41866,
   GOES_17: 43226,
+  TIANGONG: 48274,
+  JWST: 50463,
+  TERRA: 25994,
+  AQUA: 27424,
+  LANDSAT_8: 39084,
+  SENTINEL_1A: 39634,
+  IRIDIUM_NEXT_1: 41917,
+  ONEWEB_1: 44713,
+  AO_91: 43017,
+  AO_92: 43137,
+  SO_50: 27607,
 } as const

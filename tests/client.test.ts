@@ -123,7 +123,9 @@ describe('N2YOClient', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(InvalidParameterError)
         if (error instanceof InvalidParameterError) {
-          expect(error.message).toMatch(/Invalid parameter days: 11/)
+          expect(error.message).toMatch(
+            /Invalid parameter observerLat: unknown. Latitude must be between -90 and 90 degrees/,
+          )
         }
       }
     })

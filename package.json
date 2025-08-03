@@ -1,6 +1,6 @@
 {
   "name": "n2yo-ts",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": false,
   "packageManager": "pnpm@10.13.1",
   "description": "A strongly-typed TypeScript client for the N2YO.com satellite tracking API.",
@@ -49,7 +49,8 @@
   "dependencies": {
     "@commander-js/extra-typings": "^14.0.0",
     "commander": "^14.0.0",
-    "prompts": "^2.4.2"
+    "prompts": "^2.4.2",
+    "zod": "^4.0.11"
   },
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.2",
