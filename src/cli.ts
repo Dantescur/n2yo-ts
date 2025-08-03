@@ -14,6 +14,7 @@ import {
   InvalidParameterError,
   N2YOError,
   RateLimitError,
+  SatelliteCategories,
   type SatelliteCategoryId,
 } from './index'
 
@@ -151,6 +152,35 @@ const program = new Command()
   .version(packageJson.version)
   .option('--apiKey <key>', 'N2YO API key')
   .option('-v, --verbose', 'Enable verbose output', false)
+  .option('--list-categories', 'List available satellite categories', false)
+  .option('--list-common', 'List common satellites', false)
+  .action((opt) => {
+    if (opt.listCategories && opt.listCommon) {
+      program.error('Cannot use --list-categories and --list-common together')
+    }
+    if ((opt.listCategories || opt.listCommon) && process.argv.length > 3) {
+      program.error(
+        'Cannot use --list-categories or --list-common with commands',
+      )
+    }
+
+    if (opt.listCategories) {
+      console.log('Available Satellite Categories')
+      Object.entries(SatelliteCategories).forEach(([id, name]) => {
+        console.log(`ID: ${id}, Name: ${name}`)
+      })
+      console.log('ID: 0', 'Name: All')
+      process.exit(0)
+    }
+
+    if (opt.listCommon) {
+      console.log('Common Satellites:')
+      Object.entries(COMMON_SATELLITES).forEach(([name, id]) => {
+        console.log(`Name: ${name}, NORAD ID: ${id}`)
+      })
+      process.exit(0)
+    }
+  })
 
 // Commands
 program
