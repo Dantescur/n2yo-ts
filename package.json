@@ -29,6 +29,9 @@
     },
     "./package.json": "./package.json"
   },
+  "bin": {
+    "n2yo-ts": "./dist/cli.js"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -43,6 +46,10 @@
     "format": "prettier --cache --write .",
     "release": "bumpp && pnpm publish",
     "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "@commander-js/extra-typings": "^14.0.0",
+    "commander": "^14.0.0"
   },
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.2",
