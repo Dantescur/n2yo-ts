@@ -1,4 +1,15 @@
+import z from 'zod'
 import { InvalidParameterError, N2YOError, RateLimitError } from './errors'
+import {
+  GetAboveParamsSchema,
+  GetPositionsParamsSchema,
+  GetRadioPassesParamsSchema,
+  GetTleByNameParamsSchema,
+  GetTleParamsSchema,
+  GetVisualPassesParamsSchema,
+  mapZodErrorToInvalidParameterError,
+  UtcToLocalParamsSchema,
+} from './schemas'
 import {
   COMMON_SATELLITES,
   SatelliteCategories,
@@ -359,6 +370,14 @@ export class N2YOClient {
    * ```
    */
   getTle(id: number): Promise<TleResponse> {
+    try {
+      GetTleParamsSchema.parse({ id })
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        mapZodErrorToInvalidParameterError(error)
+      }
+      throw error
+    }
     return this.makeRequest<TleResponse>(`tle/${id}`, 30 * 60 * 1000)
   }
 
@@ -407,22 +426,39 @@ export class N2YOClient {
     observerAlt: number,
     seconds: number,
   ): Promise<PositionsResponse> {
-    if (seconds > 300) {
-      throw new InvalidParameterError(
-        'seconds',
+    try {
+      GetPositionsParamsSchema.parse({
+        id,
+        observerLat,
+        observerLng,
+        observerAlt,
         seconds,
-        'Maximum number of seconds is 300',
-      )
+      })
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        mapZodErrorToInvalidParameterError(error)
+      }
+      throw error
     }
 
-    const response = await this.makeRequest<PositionsResponse>(
-      `positions/${id}/${observerLat}/${observerLng}/${observerAlt}/${seconds}`,
-      2 * 60 * 1000,
-    )
-    if (!response.positions) {
-      return { ...response, positions: [] }
+    try {
+      const response = await this.makeRequest<PositionsResponse>(
+        `positions/${id}/${observerLat}/${observerLng}/${observerAlt}/${seconds}`,
+        2 * 60 * 1000,
+      )
+      if (!response.positions) {
+        return { ...response, positions: [] }
+      }
+      return response
+    } catch (error) {
+      if (error instanceof N2YOError && error.message.includes('got null')) {
+        return {
+          info: { satcount: 0, transactionscount: 0, satid: 0, satname: '' },
+          positions: [],
+        }
+      }
+      throw error
     }
-    return response
   }
 
   /**
@@ -446,26 +482,48 @@ export class N2YOClient {
     days: number,
     minVisibility: number,
   ): Promise<VisualPassesResponse> {
-    if (days > 10) {
-      throw new InvalidParameterError(
-        'days',
+    try {
+      GetVisualPassesParamsSchema.parse({
+        id,
+        observerLat,
+        observerLng,
+        observerAlt,
         days,
-        'Maximum number of days is 10',
-      )
-    }
-
-    const response = await this.makeRequest<VisualPassesResponse>(
-      `visualpasses/${id}/${observerLat}/${observerLng}/${observerAlt}/${days}/${minVisibility}`,
-    )
-
-    if (!response.passes) {
-      return {
-        ...response,
-        passes: [],
-        info: { ...response.info, passescount: 0 },
+        minVisibility,
+      })
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        mapZodErrorToInvalidParameterError(error)
       }
+      throw error
     }
-    return response
+
+    try {
+      const response = await this.makeRequest<VisualPassesResponse>(
+        `visualpasses/${id}/${observerLat}/${observerLng}/${observerAlt}/${days}/${minVisibility}`,
+      )
+      if (!response.passes) {
+        return {
+          ...response,
+          passes: [],
+          info: { ...response.info, passescount: 0 },
+        }
+      }
+      return response
+    } catch (error) {
+      if (error instanceof N2YOError && error.message.includes('got null')) {
+        return {
+          info: {
+            passescount: 0,
+            satid: id,
+            satname: '',
+            transactionscount: 0,
+          },
+          passes: [],
+        }
+      }
+      throw error
+    }
   }
 
   /**
@@ -489,25 +547,48 @@ export class N2YOClient {
     days: number,
     minElevation: number,
   ): Promise<RadioPassesResponse> {
-    if (days > 10) {
-      throw new InvalidParameterError(
-        'days',
+    try {
+      GetRadioPassesParamsSchema.parse({
+        id,
+        observerLat,
+        observerLng,
+        observerAlt,
         days,
-        'Maximum number of days is 10',
-      )
-    }
-
-    const response = await this.makeRequest<RadioPassesResponse>(
-      `radiopasses/${id}/${observerLat}/${observerLng}/${observerAlt}/${days}/${minElevation}`,
-    )
-    if (!response.passes) {
-      return {
-        ...response,
-        passes: [],
-        info: { ...response.info, passescount: 0 },
+        minElevation,
+      })
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        mapZodErrorToInvalidParameterError(error)
       }
+      throw error
     }
-    return response
+    try {
+      const response = await this.makeRequest<RadioPassesResponse>(
+        `radiopasses/${id}/${observerLat}/${observerLng}/${observerAlt}/${days}/${minElevation}`,
+        10 * 60 * 1000, // Cache for 10 minutes
+      )
+      if (!response.passes) {
+        return {
+          ...response,
+          passes: [],
+          info: { ...response.info, passescount: 0 },
+        }
+      }
+      return response
+    } catch (error) {
+      if (error instanceof N2YOError && error.message.includes('got null')) {
+        return {
+          info: {
+            passescount: 0,
+            satid: id,
+            satname: '',
+            transactionscount: 0,
+          },
+          passes: [],
+        }
+      }
+      throw error
+    }
   }
 
   /**
@@ -529,17 +610,24 @@ export class N2YOClient {
     searchRadius: number,
     categoryId: SatelliteCategoryId,
   ): Promise<AboveResponse> {
-    if (searchRadius < 0 || searchRadius > 90) {
-      throw new InvalidParameterError(
-        'searchRadius',
+    try {
+      GetAboveParamsSchema.parse({
+        observerLat,
+        observerLng,
+        observerAlt,
         searchRadius,
-        'Search radius must be between 0 and 90 degrees',
-      )
+        categoryId,
+      })
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        mapZodErrorToInvalidParameterError(error)
+      }
+      throw error
     }
-
     try {
       const response = await this.makeRequest<AboveResponse>(
         `above/${observerLat}/${observerLng}/${observerAlt}/${searchRadius}/${categoryId}`,
+        5 * 60 * 1000, // Cache for 5 minutes
       )
       if (!response.info || !response.above) {
         return {
@@ -632,7 +720,7 @@ export class N2YOClient {
       const second = parts.find((p) => p.type === 'second')!.value
       return `${year}-${month}-${day} ${hour}:${minute}:${second}`
     } catch (error) {
-      console.warn(
+      this.debugLog(
         `Failed to format time zone '${timeZone}': ${error}. Falling back to UTC.`,
       )
       return `${date.toISOString().replace('T', ' ').slice(0, 19)} UTC`
