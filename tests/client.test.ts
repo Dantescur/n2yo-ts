@@ -1,7 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fail } from 'node:assert'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+} from 'vitest'
 import createFetchMock from 'vitest-fetch-mock'
 import { N2YOClient } from '../src/client'
-import { InvalidParameterError, N2YOError } from '../src/errors'
+import { InvalidParameterError, N2YOError, RateLimitError } from '../src/errors'
 import type {
   AboveResponse,
   PositionsResponse,
@@ -285,7 +294,7 @@ describe('N2YOClient', () => {
     it('should log debug messages when enabled', async () => {
       const debugLog = vi.fn()
       const debugClient = new N2YOClient('TEST_API_KEY', {
-        debug: false,
+        debug: true,
         debugLog,
       })
 
@@ -381,7 +390,7 @@ describe('N2YOClient', () => {
   describe('Configuration', () => {
     it('should use custom debug log function', () => {
       const debugLog = vi.fn()
-      const customClient = new N2YOClient('TEST', { debug: false, debugLog })
+      const customClient = new N2YOClient('TEST', { debug: true, debugLog })
       customClient.config.debugLog('test')
       expect(debugLog).toHaveBeenCalledWith('test')
     })
@@ -392,6 +401,69 @@ describe('N2YOClient', () => {
       const spy = vi.spyOn(await import('../src/helpers'), 'getCategoryName')
       client.getCategoryName(1)
       expect(spy).toHaveBeenCalledWith(1)
+    })
+  })
+
+  describe('error handling integration', () => {
+    let client: N2YOClient
+
+    beforeEach(() => {
+      client = new N2YOClient('test-key')
+    })
+
+    it('should throw InvalidParameterError for invalid NORAD ID', async () => {
+      try {
+        await client.getTle(-1)
+        fail('Expected error to be thrown')
+      } catch (error) {
+        expect(error).toEqual(
+          expect.objectContaining({
+            name: 'InvalidParameterError',
+            message: 'Invalid parameter id: -1. NORAD ID must be positive',
+          }),
+        )
+        expect(error).toBeInstanceOf(Error)
+      }
+    })
+
+    it('should inspect the error structure', async () => {
+      try {
+        await client.getTle(-1)
+        fail('Expected error to be thrown')
+      } catch (error) {
+        console.info('Error prototype chain:')
+        console.info(Object.getPrototypeOf(error))
+        console.info(
+          'error instanceof InvalidParameterError:',
+          error instanceof InvalidParameterError,
+        )
+        console.info('error instanceof N2YOError:', error instanceof N2YOError)
+        console.info('error instanceof Error:', error instanceof Error)
+      }
+    })
+
+    it('should handle 429 rate limit errors', async () => {
+      global.fetch = vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 429,
+          statusText: 'Too Many Requests',
+        }),
+      ) as Mock
+
+      await expect(client.getTle(25544)).rejects.toThrow(RateLimitError)
+    })
+
+    it('should wrap API errors in N2YOError', async () => {
+      global.fetch = vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+        }),
+      ) as Mock
+
+      await expect(client.getTle(25544)).rejects.toThrow(N2YOError)
     })
   })
 })
