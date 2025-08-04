@@ -119,7 +119,7 @@ export function mapZodErrorToInvalidParameterError(
   error: z.ZodError,
   input: any,
 ): never {
-  const issue = error.issues[0]! // NOTE: This is ok right?
+  const issue = error.issues[0]!
   const path = issue.path.join('.')
   const value =
     issue.path.reduce((obj, key) => (obj as any)?.[key], input) ?? 'unknown'

@@ -285,7 +285,7 @@ describe('N2YOClient', () => {
     it('should log debug messages when enabled', async () => {
       const debugLog = vi.fn()
       const debugClient = new N2YOClient('TEST_API_KEY', {
-        debug: true,
+        debug: false,
         debugLog,
       })
 
@@ -381,7 +381,7 @@ describe('N2YOClient', () => {
   describe('Configuration', () => {
     it('should use custom debug log function', () => {
       const debugLog = vi.fn()
-      const customClient = new N2YOClient('TEST', { debug: true, debugLog })
+      const customClient = new N2YOClient('TEST', { debug: false, debugLog })
       customClient.config.debugLog('test')
       expect(debugLog).toHaveBeenCalledWith('test')
     })

@@ -1,4 +1,5 @@
 import { N2YOClient } from './client'
+import type { N2YOClientConfig } from './types'
 
 // Re-export main client and all public types/utilities
 export { N2YOClient } from './client'
@@ -34,5 +35,7 @@ export {
  * @example
  * const client = createN2YOClient('your-api-key-here')
  */
-export const createN2YOClient = (apiKey: string): N2YOClient =>
-  new N2YOClient(apiKey)
+export const createN2YOClient = (
+  apiKey: string,
+  config: N2YOClientConfig = {},
+): N2YOClient => new N2YOClient(apiKey, config)
