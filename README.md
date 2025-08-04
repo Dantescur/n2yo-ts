@@ -52,9 +52,6 @@ console.log(passes.passes) // Array of passes
 // Convert UTC timestamp to local time
 const localTime = client.utcToLocal(1711987840, 'America/New_York')
 console.log(localTime) // e.g., "2024-04-01 15:30:40"
-
-// Check cache
-console.log(client.getCacheStats()) // { total, expired, valid, maxEntries }
 ```
 
 ## Configuration ⚙
@@ -62,16 +59,6 @@ console.log(client.getCacheStats()) // { total, expired, valid, maxEntries }
 ```typescript
 const client = new N2YOClient('YOUR_API_KEY', {
   debug: true,
-  cache: {
-    enabled: true,
-    ttlMs: 10 * 60 * 1000, // 10 minutes
-    maxEntries: 200,
-  },
-  rateLimit: {
-    enabled: true,
-    requestsPerHour: 1000,
-    queueRequests: true,
-  },
 })
 ```
 

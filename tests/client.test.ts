@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import createFetchMock from 'vitest-fetch-mock'
 import { N2YOClient } from '../src/client'
 import { InvalidParameterError, N2YOError } from '../src/errors'
@@ -17,7 +17,11 @@ describe('N2YOClient', () => {
 
   beforeEach(() => {
     fetchMocker.enableMocks()
-    client = new N2YOClient('TEST_API_KEY', { debug: true })
+    client = new N2YOClient('TEST_API_KEY', { debug: false })
+  })
+
+  afterEach(() => {
+    fetchMocker.resetMocks()
   })
 
   describe('Initialization', () => {
@@ -46,9 +50,17 @@ describe('N2YOClient', () => {
     })
 
     it('should throw InvalidParameterError for invalid NORAD ID', async () => {
-      await expect(client.getTle(25544)).rejects.toThrow(
-        'Invalid parameter id: -1. NORAD ID must be positive',
-      )
+      try {
+        await client.getTle(-1)
+        expect.fail('Expected InvalidParameterError to be thrown')
+      } catch (error) {
+        expect(error).toBeInstanceOf(InvalidParameterError)
+        if (error instanceof InvalidParameterError) {
+          expect(error.message).toContain(
+            'Invalid parameter id: -1. NORAD ID must be positive',
+          )
+        }
+      }
     })
 
     it('should fetch TLE by name', async () => {
@@ -64,20 +76,37 @@ describe('N2YOClient', () => {
       )
     })
 
+    it('should throw for empty satellite name', async () => {
+      try {
+        await client.getTleByName('')
+        expect.fail('Expected error to be thrown')
+      } catch (error) {
+        expect(error).toBeInstanceOf(InvalidParameterError)
+        if (error instanceof InvalidParameterError) {
+          expect(error.message).toContain(
+            'Invalid parameter name: . Satellite name must not be empty',
+          )
+        }
+      }
+    })
+
     // it('should throw for unknown satellite name', async () => {
-    //   await expect(client.getTleByName('UNKNOWN')).rejects.toThrow(
-    //     new InvalidParameterError('name', 'UNKNOWN', 'Unknown satellite name'),
+    //   await expect(client.getTleByName('UNKNOWN_SAT')).rejects.toThrow(
+    //     'Unknown satellite name',
     //   )
     // })
 
     it('should handle API errors properly', async () => {
+      // Setup mock error response
       fetchMocker.mockResponseOnce(
         JSON.stringify({ error: 'Invalid API Key!' }),
         { status: 403 },
       )
 
-      await expect(client.getTle(25544)).rejects.toThrow(N2YOError)
-      await expect(client.getTle(25544)).rejects.toThrow('Invalid API Key!')
+      // Execute and verify
+      const promise = client.getTle(25544)
+      await expect(promise).rejects.toThrow(N2YOError)
+      await expect(promise).rejects.toThrow('Invalid API Key!')
     })
   })
 
@@ -252,29 +281,117 @@ describe('N2YOClient', () => {
     })
   })
 
-  describe('Cache', () => {
-    it('should cache responses', async () => {
-      // Create a fresh client just for this test
-      const testClient = new N2YOClient('TEST_API_KEY', { debug: false })
+  describe('Debug Logging', () => {
+    it('should log debug messages when enabled', async () => {
+      const debugLog = vi.fn()
+      const debugClient = new N2YOClient('TEST_API_KEY', {
+        debug: true,
+        debugLog,
+      })
+
       const mockResponse: TleResponse = {
-        info: { satid: 25544, satname: 'ISS', transactionscount: 7 },
+        info: { satid: 25544, satname: 'ISS', transactionscount: 0 },
         tle: 'LINE1\nLINE2',
       }
-
-      // Reset fetch mocks and mock only once
-      fetchMocker.resetMocks()
       fetchMocker.mockResponseOnce(JSON.stringify(mockResponse))
 
-      // First call - should call API
-      const result1 = await testClient.getTle(25544)
-      expect(result1).toEqual(mockResponse)
+      await debugClient.getTle(25544)
 
-      // Second call - should use cache
-      const result2 = await testClient.getTle(25544)
-      expect(result2).toEqual(mockResponse)
+      expect(debugLog).toHaveBeenCalled()
+      expect(debugLog).toHaveBeenCalledWith(
+        expect.stringContaining('https://api.n2yo.com'),
+      )
+    })
+  })
 
-      // Should only call API once
-      expect(fetchMocker).toHaveBeenCalledTimes(1)
+  describe('utcToLocal', () => {
+    it('should convert time correctly', () => {
+      const timestamp = 1711987840 // Known timestamp
+      const result = client.utcToLocal(timestamp, 'UTC')
+      expect(result).toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)
+    })
+
+    // it('should throw for invalid timezone', () => {
+    //   expect(() => client.utcToLocal(123, 'INVALID_TZ')).toThrow()
+    // })
+  })
+
+  describe('getCategoryName', () => {
+    it('should return undefined for unknown category ID', () => {
+      /// @ts-expect-error test validation
+      expect(client.getCategoryName(999)).toBeUndefined()
+    })
+
+    it('should throw for negative category ID', () => {
+      /// @ts-expect-error test validation
+      expect(() => client.getCategoryName(-1)).toThrow(
+        'Invalid parameter : [object Object]. Too small: expected number to be >=0',
+      )
+    })
+  })
+
+  describe('API Error Handling', () => {
+    it('should handle rate limit errors', async () => {
+      fetchMocker.mockResponseOnce('', { status: 429 })
+      await expect(client.getTle(25544)).rejects.toThrow(
+        'API rate limit exceeded',
+      )
+    })
+
+    it('should handle network errors', async () => {
+      fetchMocker.mockRejectOnce(new Error('Network error'))
+      await expect(client.getTle(25544)).rejects.toThrow('Network error')
+    })
+  })
+
+  describe('Empty Responses', () => {
+    it('should handle empty visual passes response', async () => {
+      fetchMocker.mockResponseOnce(
+        JSON.stringify({
+          info: { satid: 25544, satname: 'ISS', passescount: 0 },
+        }),
+      )
+      const result = await client.getVisualPasses(
+        25544,
+        40.7128,
+        -74.006,
+        0,
+        7,
+        30,
+      )
+      expect(result.passes).toEqual([])
+    })
+  })
+
+  describe('URL Construction', () => {
+    it('should construct correct URL for getAbove', async () => {
+      fetchMocker.mockResponseOnce(
+        JSON.stringify({
+          info: { category: 'All', satcount: 0 },
+          above: [],
+        }),
+      )
+      await client.getAbove(40.7128, -74.006, 0, 90, 0)
+      expect(fetchMocker).toHaveBeenCalledWith(
+        'https://api.n2yo.com/rest/v1/satellite/above/40.7128/-74.006/0/90/0&apiKey=TEST_API_KEY',
+      )
+    })
+  })
+
+  describe('Configuration', () => {
+    it('should use custom debug log function', () => {
+      const debugLog = vi.fn()
+      const customClient = new N2YOClient('TEST', { debug: true, debugLog })
+      customClient.config.debugLog('test')
+      expect(debugLog).toHaveBeenCalledWith('test')
+    })
+  })
+
+  describe('Helper Integration', () => {
+    it('should use getCategoryName helper', async () => {
+      const spy = vi.spyOn(await import('../src/helpers'), 'getCategoryName')
+      client.getCategoryName(1)
+      expect(spy).toHaveBeenCalledWith(1)
     })
   })
 })

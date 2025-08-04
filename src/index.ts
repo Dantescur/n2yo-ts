@@ -17,6 +17,7 @@ export {
 } from './types'
 
 export {
+  calculateDistance,
   getAllCategories,
   getCategoryName,
   splitTle,

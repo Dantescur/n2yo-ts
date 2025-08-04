@@ -1,5 +1,4 @@
 import z from 'zod'
-import { Cache } from './cache'
 import { InvalidParameterError, N2YOError } from './errors'
 import { getCategoryName, utcToLocal } from './helpers'
 import { makeRequest } from './http'
@@ -31,7 +30,6 @@ import {
  * This class provides strongly-typed methods to interact with the [N2YO REST API](https://www.n2yo.com/api/),
  * including satellite TLEs, position predictions, visual/radio passes, and objects above a location.
  * All methods return native `Promise`s, automatically handle API key injection, and manage:
- * - **Caching**: Stores responses in an LRU cache with configurable TTL and size (default: 5 minutes, 100 entries).
  * - **Error handling**: Throws {@link N2YOError} for non-2xx responses or {@link InvalidParameterError} for invalid inputs.
  * - **Input validation**: Uses Zod for robust, type-safe parameter validation.
  *
@@ -65,9 +63,7 @@ export class N2YOClient {
   /** Private API key supplied at construction. */
   private readonly apiKey: string
   /** Config options */
-  private readonly config: Required<N2YOClientConfig>
-  /** Cache layer */
-  private readonly cache: Cache
+  readonly config: Required<N2YOClientConfig>
 
   /**
    * Create a new client instance.
@@ -84,23 +80,16 @@ export class N2YOClient {
     this.apiKey = apiKey
     this.config = {
       debug: false,
-      cache: {
-        enabled: true,
-        ttlMs: 5 * 60 * 1000,
-        maxEntries: 100,
-        ...config.cache,
-      },
       debugLog: (message: string) => {
         if (this.config.debug) console.info(`[N2YO] ${message}`)
       },
       ...config,
     }
-    this.cache = new Cache(this.config)
   }
 
   /**
    * Retrieve the latest Two-Line Element set (TLE) for a satellite.
-   * @remarks Inputs are validated using Zod for type safety. Responses are cached for 30 minutes by default.
+   * @remarks Inputs are validated using Zod for type safety.
    * @param id - NORAD catalog number (e.g., `25544` for the ISS).
    * @returns A `Promise` resolving to a {@link TleResponse} containing the satellite’s TLE data.
    * @throws {InvalidParameterError} If `id` is not a positive integer.
@@ -129,9 +118,7 @@ export class N2YOClient {
       this.baseUrl,
       this.apiKey,
       this.config,
-      this.cache,
       `tle/${id}`,
-      30 * 60 * 1000,
     )
   }
 
@@ -174,7 +161,7 @@ export class N2YOClient {
       this.config.debugLog(`getTleByName - noradId: ${noradId}`)
     }
     if (!noradId) {
-      throw new InvalidParameterError('name', name, 'Unknown satellite name')
+      throw new InvalidParameterError('name', noradId, 'Unknown satellite name')
     }
     return this.getTle(noradId)
   }
@@ -227,9 +214,7 @@ export class N2YOClient {
         this.baseUrl,
         this.apiKey,
         this.config,
-        this.cache,
         `positions/${id}/${observerLat}/${observerLng}/${observerAlt}/${seconds}`,
-        2 * 60 * 1000,
       )
       if (!response.positions) {
         if (this.config.debug) {
@@ -304,9 +289,7 @@ export class N2YOClient {
         this.baseUrl,
         this.apiKey,
         this.config,
-        this.cache,
         `visualpasses/${id}/${observerLat}/${observerLng}/${observerAlt}/${days}/${minVisibility}`,
-        10 * 60 * 1000,
       )
       if (!response.passes) {
         return {
@@ -383,9 +366,7 @@ export class N2YOClient {
         this.baseUrl,
         this.apiKey,
         this.config,
-        this.cache,
         `radiopasses/${id}/${observerLat}/${observerLng}/${observerAlt}/${days}/${minElevation}`,
-        10 * 60 * 1000,
       )
       if (!response.passes) {
         return {
@@ -459,9 +440,7 @@ export class N2YOClient {
         this.baseUrl,
         this.apiKey,
         this.config,
-        this.cache,
         `above/${observerLat}/${observerLng}/${observerAlt}/${searchRadius}/${categoryId}`,
-        5 * 60 * 1000,
       )
       if (!response.info || !response.above) {
         return {
@@ -505,13 +484,5 @@ export class N2YOClient {
       throw error
     }
     return getCategoryName(categoryId)
-  }
-
-  clearCache(): void {
-    this.cache.clear()
-  }
-
-  getCacheStats() {
-    return this.cache.getStats()
   }
 }

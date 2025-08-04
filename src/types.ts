@@ -1,22 +1,7 @@
 export interface N2YOClientConfig {
   /** Enable debug logging */
   debug?: boolean
-  /** Cache configuration */
-  cache?: {
-    enabled: boolean
-    /** Cache TTL in milliseconds (default: 5 minutes) */
-    ttlMs: number
-    /** Maximun cache entries (default: 100) */
-    maxEntries?: number
-    cleanupIntervalMs?: number
-  }
   debugLog?: (value: string) => void
-}
-
-export interface CacheEntry<T> {
-  data: T
-  timestamp: number
-  ttl: number
 }
 
 export interface N2YOErrorResponse {

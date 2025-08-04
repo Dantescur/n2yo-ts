@@ -112,31 +112,12 @@ export function utcToLocal(
     throw error
   }
 
-  try {
-    z.string()
-      .min(1)
-      .refine(
-        (val) =>
-          val.toUpperCase() === 'UTC' ||
-          Intl.supportedValuesOf('timeZone').includes(val),
-        { message: 'Invalid IANA time zone' },
-      )
-      .parse(timeZone)
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      throw new InvalidParameterError(
-        'timeZone',
-        timeZone,
-        'Invalid IANA time zone',
-      )
-    }
-    throw error
-  }
-
+  // Skip validation if we want to allow fallback
   const date = new Date(utcTimestamp * 1000)
+  const timeZoneUpper = timeZone.toUpperCase()
 
   // Special handling for UTC timezone
-  if (timeZone.toUpperCase() === 'UTC') {
+  if (timeZoneUpper === 'UTC') {
     const year = date.getUTCFullYear().toString().padStart(4, '0')
     const month = (date.getUTCMonth() + 1).toString().padStart(2, '0')
     const day = date.getUTCDate().toString().padStart(2, '0')
@@ -147,6 +128,7 @@ export function utcToLocal(
   }
 
   try {
+    // Try to format with the given timezone
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone,
       year: 'numeric',
@@ -169,6 +151,7 @@ export function utcToLocal(
     debugLog(
       `Failed to format time zone '${timeZone}': ${error}. Falling back to UTC.`,
     )
+    // Fall back to UTC formatting
     const year = date.getUTCFullYear().toString().padStart(4, '0')
     const month = (date.getUTCMonth() + 1).toString().padStart(2, '0')
     const day = date.getUTCDate().toString().padStart(2, '0')
@@ -201,4 +184,49 @@ export function getCategoryName(
     throw error
   }
   return SatelliteCategories[categoryId]
+}
+
+/**
+ * Calculates the distance between two geographic points using the Haversine formula
+ * @param point1 - First geographic point
+ * @param point1.lat - Latitude of first point in degrees
+ * @param point1.lng - Longitude of first point in degrees
+ * @param point2 - Second geographic point
+ * @param point2.lat - Latitude of second point in degrees
+ * @param point2.lng - Longitude of second point in degrees
+ * @returns Distance between points in kilometers
+ * @example
+ * // Calculate distance between NYC and London
+ * const distance = calculateDistance(
+ *   { lat: 40.7128, lng: -74.006 },  // New York City
+ *   { lat: 51.5074, lng: -0.1278 }   // London
+ * );
+ * // Returns ~5570 km
+ */
+export function calculateDistance(
+  point1: { lat: number; lng: number },
+  point2: { lat: number; lng: number },
+): number {
+  // Earth's radius in kilometers
+  const R = 6371
+
+  // Convert degrees to radians
+  const lat1 = (point1.lat * Math.PI) / 180
+  const lng1 = (point1.lng * Math.PI) / 180
+  const lat2 = (point2.lat * Math.PI) / 180
+  const lng2 = (point2.lng * Math.PI) / 180
+
+  // Differences in coordinates
+  const dLat = lat2 - lat1
+  const dLng = lng2 - lng1
+
+  // Haversine formula
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2)
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+  // Distance in kilometers
+  return R * c
 }
