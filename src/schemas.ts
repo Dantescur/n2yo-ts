@@ -76,12 +76,9 @@ export const GetAboveParamsSchema = z.object({
 })
 
 export const UtcToLocalParamsSchema = z.object({
-  utcTimestamp: z
-    .number()
-    .finite({ message: 'Timestamp must be a valid number' })
-    .refine((val) => !Number.isNaN(val), {
-      message: 'Timestamp must not be NaN',
-    }),
+  utcTimestamp: z.number().refine((val) => !Number.isNaN(val), {
+    message: 'Timestamp must not be NaN',
+  }),
   timeZone: z
     .string()
     .min(1, { message: 'Time zone must not be empty' })
@@ -118,10 +115,13 @@ export type GetTleByNameParams = z.infer<typeof GetTleByNameParamsSchema>
  * @param error - The Zod validation error.
  * @throws {InvalidParameterError} With the parameter path, value, and message from the first issue, or a generic error if no issues exist.
  */
-export function mapZodErrorToInvalidParameterError(error: z.ZodError): never {
+export function mapZodErrorToInvalidParameterError(
+  error: z.ZodError,
+  input: any,
+): never {
   const issue = error.issues[0]! // NOTE: This is ok right?
   const path = issue.path.join('.')
   const value =
-    issue.path.reduce((obj, key) => (obj as any)?.[key], {}) ?? 'unknown'
+    issue.path.reduce((obj, key) => (obj as any)?.[key], input) ?? 'unknown'
   throw new InvalidParameterError(path, value, issue.message)
 }

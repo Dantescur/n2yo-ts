@@ -15,6 +15,7 @@ export default defineConfig({
   // external: ['node:process', 'node:fs', 'node:path', 'node:os'],
   outDir: './dist',
   nodeProtocol: 'strip',
+  unused: true,
   dts: true,
   // shims: true,
   format: ['es', 'cjs'],

@@ -1,5 +1,7 @@
-// Re-export main client and all public types/utilities
 import { N2YOClient } from './client'
+
+// Re-export main client and all public types/utilities
+export { N2YOClient } from './client'
 export { InvalidParameterError, N2YOError, RateLimitError } from './errors'
 export {
   COMMON_SATELLITES,
@@ -15,10 +17,11 @@ export {
 } from './types'
 
 export {
-  calculateDistance,
   getAllCategories,
+  getCategoryName,
   splitTle,
   timestampToDate,
+  utcToLocal,
 } from './helpers'
 
 /**

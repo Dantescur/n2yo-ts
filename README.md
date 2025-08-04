@@ -33,35 +33,46 @@ First, obtain your API key from [N2YO.com](https://www.n2yo.com/api/).
 ### Basic Usage Example
 
 ```typescript
-import { createN2YOClient } from 'n2yo-ts'
+import { N2YOClient } from 'n2yo-ts'
 
-// Initialize client with your API key
-const client = createN2YOClient('YOUR_API_KEY')
+const client = new N2YOClient('YOUR_API_KEY', { debug: true })
 
-// Track the International Space Station (NORAD ID 25544)
-async function trackISS() {
-  try {
-    // Get current position
-    const positions = await client.getPositions(25544, 40.7128, -74.006, 0, 60)
+// Fetch TLE for the ISS
+const tle = await client.getTleByName('ISS')
+console.log(tle.tle) // e.g., "1 25544U 98067A   ..."
 
-    // Get next visible passes over New York
-    const passes = await client.getVisualPasses(
-      25544,
-      40.7128,
-      -74.006,
-      0,
-      7,
-      300,
-    )
+// Predict ISS positions for the next 60 seconds
+const positions = await client.getPositions(25544, 40.7128, -74.006, 0, 60)
+console.log(positions.positions) // Array of positions
 
-    console.log('Current ISS Position:', positions[0])
-    console.log('Next Visible Passes:', passes)
-  } catch (error) {
-    console.error('Tracking error:', error)
-  }
-}
+// Get visual passes for the ISS
+const passes = await client.getVisualPasses(25544, 40.7128, -74.006, 0, 7, 30)
+console.log(passes.passes) // Array of passes
 
-trackISS()
+// Convert UTC timestamp to local time
+const localTime = client.utcToLocal(1711987840, 'America/New_York')
+console.log(localTime) // e.g., "2024-04-01 15:30:40"
+
+// Check cache
+console.log(client.getCacheStats()) // { total, expired, valid, maxEntries }
+```
+
+## Configuration ⚙
+
+```typescript
+const client = new N2YOClient('YOUR_API_KEY', {
+  debug: true,
+  cache: {
+    enabled: true,
+    ttlMs: 10 * 60 * 1000, // 10 minutes
+    maxEntries: 200,
+  },
+  rateLimit: {
+    enabled: true,
+    requestsPerHour: 1000,
+    queueRequests: true,
+  },
+})
 ```
 
 ## API Reference 📚

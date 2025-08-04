@@ -5,34 +5,18 @@ export interface N2YOClientConfig {
   cache?: {
     enabled: boolean
     /** Cache TTL in milliseconds (default: 5 minutes) */
-    ttlMs?: number
+    ttlMs: number
     /** Maximun cache entries (default: 100) */
     maxEntries?: number
+    cleanupIntervalMs?: number
   }
-  /** Rate limit configuration */
-  rateLimit?: {
-    enabled?: boolean
-    /** Request per hour (default: 1000 based on N2YO limits) */
-    requestsPerHour?: number
-    /** Enable request queuing when rate limited */
-    queueRequests?: boolean
-  }
+  debugLog?: (value: string) => void
 }
 
 export interface CacheEntry<T> {
   data: T
   timestamp: number
   ttl: number
-}
-
-export interface RateLimitState {
-  requests: number[]
-  queue: Array<{
-    resolve: (value: any) => void
-    reject: (error: any) => void
-    request: () => Promise<any>
-  }>
-  processing: boolean
 }
 
 export interface N2YOErrorResponse {
@@ -320,3 +304,7 @@ export const COMMON_SATELLITES: Record<string, number> = {
   AO_92: 43137,
   SO_50: 27607,
 } as const
+
+export interface Logger {
+  debug: (message: string) => void
+}

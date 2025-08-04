@@ -3,9 +3,18 @@
  * Extends the native JavaScript Error class.
  */
 export class N2YOError extends Error {
-  constructor(message: string, cause?: unknown) {
+  constructor(
+    message: string,
+    cause?: unknown,
+    debugLog?: (msg: string) => void,
+  ) {
     super(message, { cause })
     this.name = 'N2YOError'
+    if (debugLog) {
+      debugLog(
+        `N2YOError created: ${message}${cause ? `, cause: ${cause}` : ''}`,
+      )
+    }
   }
 }
 

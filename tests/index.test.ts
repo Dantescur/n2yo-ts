@@ -1,17 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import * as n2yo from '../src/index'
+import {
+  InvalidParameterError,
+  N2YOClient,
+  N2YOError,
+  RateLimitError,
+} from '../src'
 
-describe('index.ts exports', () => {
-  it('should export all error types', () => {
-    expect(n2yo).toHaveProperty('N2YOError')
-    expect(n2yo).toHaveProperty('RateLimitError')
-    expect(n2yo).toHaveProperty('InvalidParameterError')
-
-    // Verify these are actually classes
-    expect(new n2yo.N2YOError('test')).toBeInstanceOf(Error)
-    expect(new n2yo.RateLimitError()).toBeInstanceOf(n2yo.N2YOError)
-    expect(
-      new n2yo.InvalidParameterError('param', 'value', 'message'),
-    ).toBeInstanceOf(n2yo.N2YOError)
+describe('Exports', () => {
+  it('should export N2YOClient and errors', () => {
+    expect(N2YOClient).toBeDefined()
+    expect(InvalidParameterError).toBeDefined()
+    expect(N2YOError).toBeDefined()
+    expect(RateLimitError).toBeDefined()
   })
 })

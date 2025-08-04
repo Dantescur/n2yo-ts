@@ -1,3 +1,5 @@
+import { z } from 'zod'
+import { InvalidParameterError } from './errors'
 import {
   SatelliteCategories,
   type SatelliteCategoryId,
@@ -5,58 +7,79 @@ import {
 } from './types'
 
 /**
- * Splits a Two-Line Element (TLE) string into its consituents lines.
- *
- * @param tle The TLE string containing two lines separated by CRLF (`\r\n`)
- * @returns A tuple containing the two TLE lines
- * @throws {Error} If the TLE format is invalid (not exactly two lines separated by CRLF)
- *
- * @example
- * const [ line1, line2 ] = splitTle('1 25544U...\r\n2 25544...')
+ * Splits a TLE string into its two lines.
+ * @param tle - The TLE string to split.
+ * @returns An array of two strings representing the TLE lines.
+ * @throws {InvalidParameterError} If the TLE is empty or not exactly two lines.
  */
-export function splitTle(tle: string): [string, string] {
-  if (!tle.includes('\r\n')) {
-    throw new Error(
-      String.raw`Invalid TLE format - must contain two lines separated by \r\n`,
+export function splitTle(
+  tle: string,
+  debugLog?: (msg: string) => void,
+): [string, string] {
+  if (debugLog) {
+    debugLog(`splitTle called with: ${tle}`)
+  }
+  try {
+    z.string().min(1, { message: 'TLE must not be empty' }).parse(tle)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      if (debugLog) {
+        debugLog(`TLE validation failed: ${error.message}`)
+      }
+      throw new InvalidParameterError('tle', tle, error.issues[0]!.message!)
+    }
+    throw error
+  }
+  const lines = tle
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line)
+  if (lines.length !== 2) {
+    if (debugLog) {
+      debugLog(`Invalid TLE: expected 2 lines, got ${lines.length}`)
+    }
+    throw new InvalidParameterError(
+      'tle',
+      tle,
+      'TLE must have exactly two lines',
     )
   }
-  const lines = tle.split('\r\n')
-  if (lines.length !== 2) {
-    throw new Error('Invalid TLE format - must contain exactly two lines')
+  if (debugLog) {
+    debugLog(`TLE split into: ${JSON.stringify(lines)}`)
   }
-  return lines as [string, string]
+  return [lines[0]!, lines[1]!]
 }
 
 /**
- * Convert Unix timestamp (seconds since epoch) to a JavaScript Date object.
- * @param timestamp Unix timestamp in seconds
- * @returns Date object representing the timestamp
- * @throws {TypeError} If the timestamp is not a  valid number
- *
- * @example
- * const date = timestampToDate(17119878400) // June 2, 2024
+ * Converts a Unix timestamp (seconds) to a Date object.
+ * @param timestamp - Unix timestamp in seconds.
+ * @returns A Date object representing the timestamp.
+ * @throws {InvalidParameterError} If the timestamp is NaN or infinite.
  */
 export function timestampToDate(timestamp: number): Date {
-  if (Number.isNaN(timestamp) || !Number.isFinite(timestamp)) {
-    throw new TypeError('Invalid timestamp value')
+  try {
+    z.number().parse(timestamp)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new InvalidParameterError(
+        'timestamp',
+        timestamp,
+        'Timestamp must be a valid number',
+      )
+    }
+    throw error
   }
   return new Date(timestamp * 1000)
 }
 
 /**
- * Retrieves all available satellite categories sa an array of objects
- * with both ID and name properties.
- *
- * @returns Array of categories objects in the format `{ id: number, name: string }`
- *
- * @example
- * const categories = getAllCategories()
- * // Returns [{id: 1, name: 'Brightest'}, {id: 2, name: 'ISS'},...]
+ * Returns all satellite categories.
+ * @returns An array of objects with category ID and name.
  */
-export function getAllCategories(): Array<{
+export function getAllCategories(): {
   id: SatelliteCategoryId
   name: SatelliteCategoryName
-}> {
+}[] {
   return Object.entries(SatelliteCategories).map(([id, name]) => ({
     id: Number.parseInt(id) as SatelliteCategoryId,
     name,
@@ -64,41 +87,118 @@ export function getAllCategories(): Array<{
 }
 
 /**
- * Calculates the great-circle distance between two points on Earth using the Haversine formula.
- *
- * @param point1 - First geographic coordinate
- * @param point1.lat - Latitude of the first point
- * @param point1.lng - Longitude of the first point
- * @param point2 - Second geographic coordinate
- * @param point2.lat - Latitude of the second point
- * @param point2.lng - Longitude of the second point
- * @returns Distance between the two points in kilometers.
- *
- * @example
- * const distance = calculateDistance(
- *   { lat: 40.7128, lng: -74.0060 }, // New York City
- *   { lat: 51.5074, lng: -0.1278 }   // London
- * ); // Returns ~5570 km
- *
- * @see https://en.wikipedia.org/wiki/Haversine_formula
- * @see https://www.movable-type.co.uk/scripts/latlong.html
+ * Converts a UTC Unix timestamp (seconds) to a local time string in the specified time zone.
+ * @param utcTimestamp - Unix timestamp in seconds (UTC).
+ * @param timeZone - IANA time zone name (e.g., 'America/New_York') or 'UTC'.
+ * @param debugLog - Debug logging function.
+ * @returns Formatted local time string (e.g., '2025-08-01 19:17:00').
+ * @throws {InvalidParameterError} If the timestamp or time zone is invalid.
  */
-export function calculateDistance(
-  point1: { lat: number; lng: number },
-  point2: { lat: number; lng: number },
-): number {
-  const R = 6371 // Earth's radius in kilometers
-  const toRadians = (degrees: number) => (degrees * Math.PI) / 180
+export function utcToLocal(
+  utcTimestamp: number,
+  timeZone: string,
+  debugLog: (msg: string) => void,
+): string {
+  try {
+    z.number().parse(utcTimestamp)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new InvalidParameterError(
+        'utcTimestamp',
+        utcTimestamp,
+        'Invalid timestamp',
+      )
+    }
+    throw error
+  }
 
-  const lat1 = toRadians(point1.lat)
-  const lat2 = toRadians(point2.lat)
-  const deltaLat = toRadians(point2.lat - point1.lat)
-  const deltaLng = toRadians(point2.lng - point1.lng)
+  try {
+    z.string()
+      .min(1)
+      .refine(
+        (val) =>
+          val.toUpperCase() === 'UTC' ||
+          Intl.supportedValuesOf('timeZone').includes(val),
+        { message: 'Invalid IANA time zone' },
+      )
+      .parse(timeZone)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new InvalidParameterError(
+        'timeZone',
+        timeZone,
+        'Invalid IANA time zone',
+      )
+    }
+    throw error
+  }
 
-  const a =
-    Math.sin(deltaLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  const date = new Date(utcTimestamp * 1000)
 
-  return R * c
+  // Special handling for UTC timezone
+  if (timeZone.toUpperCase() === 'UTC') {
+    const year = date.getUTCFullYear().toString().padStart(4, '0')
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0')
+    const day = date.getUTCDate().toString().padStart(2, '0')
+    const hour = date.getUTCHours().toString().padStart(2, '0')
+    const minute = date.getUTCMinutes().toString().padStart(2, '0')
+    const second = date.getUTCSeconds().toString().padStart(2, '0')
+    return `${year}-${month}-${day} ${hour}:${minute}:${second} UTC`
+  }
+
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    })
+    const parts = formatter.formatToParts(date)
+    const year = parts.find((p) => p.type === 'year')!.value
+    const month = parts.find((p) => p.type === 'month')!.value
+    const day = parts.find((p) => p.type === 'day')!.value
+    const hour = parts.find((p) => p.type === 'hour')!.value
+    const minute = parts.find((p) => p.type === 'minute')!.value
+    const second = parts.find((p) => p.type === 'second')!.value
+    return `${year}-${month}-${day} ${hour}:${minute}:${second}`
+  } catch (error) {
+    debugLog(
+      `Failed to format time zone '${timeZone}': ${error}. Falling back to UTC.`,
+    )
+    const year = date.getUTCFullYear().toString().padStart(4, '0')
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0')
+    const day = date.getUTCDate().toString().padStart(2, '0')
+    const hour = date.getUTCHours().toString().padStart(2, '0')
+    const minute = date.getUTCMinutes().toString().padStart(2, '0')
+    const second = date.getUTCSeconds().toString().padStart(2, '0')
+    return `${year}-${month}-${day} ${hour}:${minute}:${second} UTC`
+  }
+}
+
+/**
+ * Returns the satellite category name for a given ID.
+ * @param categoryId - Numeric category identifier (0–56).
+ * @returns Human-readable category name or undefined if the ID is unknown.
+ * @throws {InvalidParameterError} If categoryId is invalid.
+ */
+export function getCategoryName(
+  categoryId: SatelliteCategoryId,
+): SatelliteCategoryName | undefined {
+  try {
+    z.number().int().min(0).parse(categoryId)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new InvalidParameterError(
+        'categoryId',
+        categoryId,
+        'must be greater than or equal to 0',
+      )
+    }
+    throw error
+  }
+  return SatelliteCategories[categoryId]
 }
